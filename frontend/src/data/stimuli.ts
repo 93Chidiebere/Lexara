@@ -83,7 +83,7 @@ export const STIMULI: Stimulus[] = [
     title: "Tapping Palm Wine",
     category: "Agriculture",
     description: "A traditional palm wine tapper climbing a tall palm tree with a rope harness to harvest sap.",
-    imageUrl: "https://images.unsplash.com/photo-1590001155093-a3c66ab0c3ff?auto=format&fit=crop&w=600&q=80",
+    imageUrl: "https://images.unsplash.com/photo-1508213981460-0722d4f215d1?auto=format&fit=crop&w=600&q=80",
     audioPrompt: "Describe the tapper climbing the tree to harvest palm wine.",
     dialectsData: {
       "Onitsha": {
@@ -139,7 +139,7 @@ export const STIMULI: Stimulus[] = [
     title: "Pounding Yam in a Mortar",
     category: "Food Preparation",
     description: "Two young men rhythmically pounding boiled yams in a large wooden mortar with heavy pestles.",
-    imageUrl: "https://images.unsplash.com/photo-1596797038530-2c107229654b?auto=format&fit=crop&w=600&q=80",
+    imageUrl: "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=600&q=80",
     audioPrompt: "Describe the men pounding yam and the tools they are using.",
     dialectsData: {
       "Onitsha": {

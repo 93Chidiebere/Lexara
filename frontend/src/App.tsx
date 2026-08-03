@@ -559,7 +559,10 @@ export default function App() {
                   Speaking: <strong>{dialect} {language}</strong>
                 </p>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <button className="btn-skip" onClick={nextStimulus}>
+                  Next
+                </button>
                 <span className={`status-pill ${backendStatus}`} style={{
                   fontSize: "10px",
                   padding: "3px 8px",
