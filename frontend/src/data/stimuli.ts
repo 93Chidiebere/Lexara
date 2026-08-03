@@ -139,6 +139,7 @@ export const STIMULI: Stimulus[] = [
 export const LANGUAGES_AND_DIALECTS = {
   "Igbo": [
     "Onitsha",
+    "Mgbowo",
     "Owerri",
     "Abiriba",
     "Nnewi",
@@ -146,7 +147,6 @@ export const LANGUAGES_AND_DIALECTS = {
     "Umuahia",
     "Ngwa",
     "Arochukwu",
-    "Mgbowo",
     "Others"
   ],
   "Yoruba": [
