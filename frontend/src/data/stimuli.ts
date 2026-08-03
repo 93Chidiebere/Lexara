@@ -55,7 +55,7 @@ export const STIMULI: Stimulus[] = [
     title: "Grinding Pepper in a Mortar",
     category: "Daily Chores",
     description: "A woman grinding fresh red peppers using a traditional wooden mortar and pestle.",
-    imageUrl: "https://images.unsplash.com/photo-1596797038530-2c107229654b?auto=format&fit=crop&w=600&q=80",
+    imageUrl: "https://images.unsplash.com/photo-1618037372808-f65e824a305b?auto=format&fit=crop&w=600&q=80",
     audioPrompt: "Describe the action of grinding pepper using these tools.",
     dialectsData: {
       "Onitsha": {
@@ -167,7 +167,7 @@ export const STIMULI: Stimulus[] = [
     title: "Danfo Buses in Traffic",
     category: "Urban Life",
     description: "Iconic yellow Danfo transit buses lined up in traffic under a flyover in Lagos.",
-    imageUrl: "https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?auto=format&fit=crop&w=600&q=80",
+    imageUrl: "https://images.unsplash.com/photo-1506012787146-f92b2d7d6d96?auto=format&fit=crop&w=600&q=80",
     audioPrompt: "Describe the heavy traffic and yellow commercial transit buses.",
     dialectsData: {
       "Onitsha": {
@@ -189,7 +189,7 @@ export const STIMULI: Stimulus[] = [
     title: "Roadside Boli Vendor",
     category: "Street Food",
     description: "A vendor roasting sweet yellow plantains (boli) and fresh fish over an open-air charcoal grill.",
-    imageUrl: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=600&q=80",
+    imageUrl: "https://images.unsplash.com/photo-1534422298391-e4f8c172dddb?auto=format&fit=crop&w=600&q=80",
     audioPrompt: "Describe the roadside vendor roasting plantains over hot charcoal.",
     dialectsData: {
       "Onitsha": {
