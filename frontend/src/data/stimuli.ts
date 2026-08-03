@@ -21,7 +21,7 @@ export const STIMULI: Stimulus[] = [
     title: "A Mug on a Table",
     category: "Household",
     description: "A standard drinking mug sitting on a flat wooden table surface.",
-    imageUrl: "https://images.unsplash.com/photo-1517256064527-09c53b2d0ec6?auto=format&fit=crop&w=600&q=80",
+    imageUrl: "/cup.jpg",
     audioPrompt: "Describe this drinking vessel in your dialect.",
     dialectsData: {
       "Onitsha": {

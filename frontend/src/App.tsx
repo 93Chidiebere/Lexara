@@ -43,6 +43,11 @@ export default function App() {
   const [validationResult, setValidationResult] = useState<any>(null);
   const [isValidating, setIsValidating] = useState<boolean>(false);
   const [backendStatus, setBackendStatus] = useState<"checking" | "online" | "offline">("checking");
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
+
+  const handleImageError = (id: string) => {
+    setImageErrors((prev) => ({ ...prev, [id]: true }));
+  };
 
   // Audio recording hardware hooks
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -574,11 +579,19 @@ export default function App() {
             {/* Stimulus display card */}
             <div className="glass-card stimulus-display" style={{ overflow: "hidden", padding: "0" }}>
               <div className="image-container">
-                <img
-                  src={STIMULI[activeStimulusIndex].imageUrl}
-                  alt={STIMULI[activeStimulusIndex].title}
-                  className="stimulus-image"
-                />
+                {imageErrors[STIMULI[activeStimulusIndex].id] ? (
+                  <div className="image-placeholder-fallback">
+                    <Globe size={32} color="var(--text-muted)" />
+                    <span style={{ fontSize: "11px", color: "var(--text-secondary)", marginTop: "6px" }}>Image Offline</span>
+                  </div>
+                ) : (
+                  <img
+                    src={STIMULI[activeStimulusIndex].imageUrl}
+                    alt={STIMULI[activeStimulusIndex].title}
+                    className="stimulus-image"
+                    onError={() => handleImageError(STIMULI[activeStimulusIndex].id)}
+                  />
+                )}
                 <span className="category-tag">{STIMULI[activeStimulusIndex].category}</span>
               </div>
 
@@ -812,7 +825,19 @@ export default function App() {
                         aspectRatio: "1/1"
                       }}
                     >
-                      <img src={stim.imageUrl} alt={stim.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      {imageErrors[stim.id] ? (
+                        <div className="image-placeholder-fallback" style={{ height: "100%" }}>
+                          <Globe size={20} color="var(--text-muted)" />
+                          <span style={{ fontSize: "9.5px", color: "var(--text-secondary)", marginTop: "2px" }}>{stim.title}</span>
+                        </div>
+                      ) : (
+                        <img
+                          src={stim.imageUrl}
+                          alt={stim.title}
+                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                          onError={() => handleImageError(stim.id)}
+                        />
+                      )}
                       <div style={{
                         position: "absolute",
                         bottom: "0",
@@ -836,7 +861,19 @@ export default function App() {
               <div className="glass-card" style={{ display: "flex", flexDirection: "column", gap: "14px", textAlign: "center" }}>
                 <h3 style={{ fontSize: "18px" }}>Peers Describing Stimulus</h3>
                 <div className="image-container" style={{ maxHeight: "150px" }}>
-                  <img src={multiplayerStimulus.imageUrl} alt={multiplayerStimulus.title} className="stimulus-image" />
+                  {imageErrors[multiplayerStimulus.id] ? (
+                    <div className="image-placeholder-fallback">
+                      <Globe size={24} color="var(--text-muted)" />
+                      <span style={{ fontSize: "10px", color: "var(--text-secondary)", marginTop: "4px" }}>{multiplayerStimulus.title}</span>
+                    </div>
+                  ) : (
+                    <img
+                      src={multiplayerStimulus.imageUrl}
+                      alt={multiplayerStimulus.title}
+                      className="stimulus-image"
+                      onError={() => handleImageError(multiplayerStimulus.id)}
+                    />
+                  )}
                 </div>
                 <p style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
                   Peers are recording voice descriptions in their respective dialects.

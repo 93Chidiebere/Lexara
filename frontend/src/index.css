@@ -612,3 +612,17 @@ h1, h2, h3, h4 {
 .rank-gold { color: var(--warning); }
 .rank-silver { color: #E5E7EB; }
 .rank-bronze { color: #B45309; }
+
+.image-placeholder-fallback {
+  width: 100%;
+  height: 100%;
+  background: #16171A;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  border: 1px dashed var(--border-subtle);
+  text-align: center;
+  padding: 10px;
+}
