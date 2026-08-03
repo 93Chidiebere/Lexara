@@ -489,7 +489,7 @@ export default function App() {
             <div className="onboarding-logo">
               <span className="logo-main gradient-text">Lexara</span>
               <p style={{ color: "var(--text-secondary)", marginTop: "8px", fontSize: "14px" }}>
-                AI dataset gamification for African dialects. Speak, preserve, and earn mobile airtime.
+                AI gamification for African dialects. Describe events and items to preserve your dialect, while earning convertible coins for cash or mobile airtime.
               </p>
             </div>
 
