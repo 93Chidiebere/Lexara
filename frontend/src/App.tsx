@@ -139,7 +139,7 @@ export default function App() {
       animationFrameRef.current = requestAnimationFrame(draw);
       analyser.getByteFrequencyData(dataArray);
 
-      ctx.fillStyle = "#0E1017";
+      ctx.fillStyle = "#16171A";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       const barWidth = (canvas.width / bufferLength) * 2.5;
@@ -148,11 +148,8 @@ export default function App() {
 
       for (let i = 0; i < bufferLength; i++) {
         barHeight = dataArray[i] / 2;
-        // Draw centered glowing emerald waveforms
         const opacity = Math.min(barHeight / 100, 1);
-        ctx.fillStyle = `rgba(16, 185, 129, ${opacity * 0.8 + 0.2})`;
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = "rgba(16, 185, 129, 0.4)";
+        ctx.fillStyle = `rgba(255, 255, 255, ${opacity * 0.8 + 0.2})`;
         ctx.fillRect(x, canvas.height / 2 - barHeight / 2, barWidth - 2, barHeight);
         x += barWidth;
       }
@@ -448,7 +445,7 @@ export default function App() {
       {/* Top Application Bar */}
       <header className="app-header">
         <div className="app-title-group">
-          <Globe className="app-logo-icon" size={24} color="#10B981" />
+          <Globe className="app-logo-icon" size={18} color="var(--primary)" />
           <h1 className="app-logo">LEXARA</h1>
         </div>
 
@@ -456,12 +453,12 @@ export default function App() {
           <div style={{ display: "flex", gap: "8px" }}>
             {/* User Level */}
             <div className="user-status-badge">
-              <Award size={14} color="#10B981" />
+              <Award size={13} color="var(--text-secondary)" />
               <span>Lvl {level}</span>
             </div>
             {/* User Wallet Balance */}
             <div className="user-status-badge points" onClick={() => setCurrentScreen("wallet")} style={{ cursor: "pointer" }}>
-              <Coins size={14} color="#F59E0B" />
+              <Coins size={13} color="var(--text-secondary)" />
               <span>{points} Pts</span>
             </div>
           </div>
@@ -533,9 +530,9 @@ export default function App() {
               </button>
             </form>
 
-            <div className="glass-card" style={{ marginTop: "10px", padding: "14px", border: "1px dashed var(--primary)" }}>
+            <div className="glass-card" style={{ marginTop: "10px", padding: "14px", border: "1px solid var(--border-subtle)", background: "rgba(255,255,255,0.01)" }}>
               <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
-                <ShieldCheck size={18} color="#10B981" style={{ flexShrink: 0, marginTop: "2px" }} />
+                <ShieldCheck size={16} color="var(--text-secondary)" style={{ flexShrink: 0, marginTop: "2px" }} />
                 <div>
                   <h4 style={{ fontSize: "13px", color: "var(--primary)" }}>Privacy & Dataset Integrity</h4>
                   <p style={{ fontSize: "11px", color: "var(--text-secondary)", marginTop: "4px" }}>
@@ -559,12 +556,15 @@ export default function App() {
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                 <span className={`status-pill ${backendStatus}`} style={{
-                  fontSize: "11px",
-                  padding: "4px 8px",
-                  borderRadius: "12px",
-                  backgroundColor: backendStatus === "online" ? "rgba(16, 185, 129, 0.1)" : "rgba(245, 158, 11, 0.1)",
-                  color: backendStatus === "online" ? "var(--primary)" : "var(--accent)",
-                  border: `1px solid ${backendStatus === "online" ? "var(--primary)" : "var(--accent)"}`
+                  fontSize: "10px",
+                  padding: "3px 8px",
+                  borderRadius: "4px",
+                  border: "1px solid var(--border-subtle)",
+                  backgroundColor: "#16171A",
+                  color: "var(--text-secondary)",
+                  fontWeight: "500",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px"
                 }}>
                   {backendStatus === "online" ? "AI Engine Online" : "AI Simulation"}
                 </span>
@@ -619,7 +619,7 @@ export default function App() {
                     {audioUrl ? (
                       <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "12px" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "10px", background: "rgba(255,255,255,0.03)", padding: "10px", borderRadius: "10px" }}>
-                          <Volume2 size={18} color="#10B981" />
+                          <Volume2 size={16} color="var(--text-secondary)" />
                           <audio src={audioUrl} controls style={{ width: "100%", height: "32px" }} />
                         </div>
                         <div style={{ display: "flex", gap: "10px" }}>
@@ -647,19 +647,19 @@ export default function App() {
             ) : (
               /* Validation result display */
               <div className="glass-card slide-up" style={{
-                border: `1px solid ${validationResult.accept ? "var(--primary)" : "var(--danger)"}`,
-                boxShadow: validationResult.accept ? "var(--shadow-glow)" : "none"
+                border: `1px solid ${validationResult.accept ? "var(--success)" : "var(--danger)"}`,
+                boxShadow: "none"
               }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                   <div>
-                    <h3 style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "16px", color: validationResult.accept ? "var(--primary)" : "var(--danger)" }}>
+                    <h3 style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "15px", color: validationResult.accept ? "var(--success)" : "var(--danger)" }}>
                       {validationResult.accept ? (
                         <>
-                          <CheckCircle size={18} /> Description Accepted
+                          <CheckCircle size={16} /> Description Accepted
                         </>
                       ) : (
                         <>
-                          <AlertTriangle size={18} /> Needs Improvement
+                          <AlertTriangle size={16} /> Needs Improvement
                         </>
                       )}
                     </h3>
@@ -668,7 +668,15 @@ export default function App() {
                     </p>
                   </div>
                   {validationResult.points_earned > 0 && (
-                    <div style={{ background: "rgba(245, 158, 11, 0.1)", border: "1px solid var(--accent)", color: "var(--accent)", padding: "4px 8px", borderRadius: "12px", fontSize: "12px", fontWeight: "700" }}>
+                    <div style={{
+                      backgroundColor: "rgba(255, 255, 255, 0.05)",
+                      border: "1px solid var(--border-subtle)",
+                      color: "var(--primary)",
+                      padding: "4px 10px",
+                      borderRadius: "4px",
+                      fontSize: "11px",
+                      fontWeight: "600"
+                    }}>
                       +{validationResult.points_earned} Pts
                     </div>
                   )}
@@ -723,8 +731,8 @@ export default function App() {
                   Cross-dialect verification play
                 </p>
               </div>
-              <div className="user-status-badge" style={{ borderColor: "rgba(16, 185, 129, 0.3)" }}>
-                <Users size={12} color="#10B981" />
+              <div className="user-status-badge">
+                <Users size={12} color="var(--text-secondary)" />
                 <span>4 Active</span>
               </div>
             </div>
@@ -732,7 +740,7 @@ export default function App() {
             {/* PHASE 1: LOBBY ENTRY */}
             {lobbyState === "lobby" && (
               <div className="glass-card" style={{ display: "flex", flexDirection: "column", gap: "16px", padding: "24px", textAlign: "center" }}>
-                <Users size={40} color="#10B981" style={{ margin: "0 auto" }} />
+                <Users size={32} color="var(--text-secondary)" style={{ margin: "0 auto" }} />
                 <div>
                   <h3 style={{ fontSize: "18px" }}>Forming Peer Validation Group</h3>
                   <p style={{ fontSize: "13px", color: "var(--text-secondary)", marginTop: "6px" }}>
@@ -933,18 +941,18 @@ export default function App() {
 
             {/* PHASE 5: CONSENSUS */}
             {lobbyState === "consensus" && (
-              <div className="glass-card slide-up" style={{ display: "flex", flexDirection: "column", gap: "16px", border: "1px solid var(--primary)", boxShadow: "var(--shadow-glow)" }}>
+              <div className="glass-card slide-up" style={{ display: "flex", flexDirection: "column", gap: "16px", border: "1px solid var(--border-subtle)", boxShadow: "none" }}>
                 <div style={{ textAlign: "center" }}>
-                  <Sparkles size={32} color="#F59E0B" style={{ margin: "0 auto 10px" }} />
+                  <Sparkles size={24} color="var(--warning)" style={{ margin: "0 auto 8px" }} />
                   <h3 style={{ fontSize: "18px" }}>Consensus Achieved!</h3>
                   <p style={{ fontSize: "13px", color: "var(--text-secondary)", marginTop: "4px" }}>
                     The submissions clear the peer threshold. The reference dataset is updated!
                   </p>
                 </div>
 
-                <div style={{ background: "rgba(16, 185, 129, 0.05)", border: "1px solid rgba(16, 185, 129, 0.2)", borderRadius: "12px", padding: "14px" }}>
+                <div style={{ background: "rgba(255, 255, 255, 0.01)", border: "1px solid var(--border-subtle)", borderRadius: "8px", padding: "14px" }}>
                   <h4 style={{ fontSize: "13px", color: "var(--primary)", display: "flex", alignItems: "center", gap: "6px" }}>
-                    <ShieldCheck size={14} /> Dataset Integration Log
+                    <ShieldCheck size={14} color="var(--text-secondary)" /> Dataset Integration Log
                   </h4>
                   <ul style={{ fontSize: "11px", color: "var(--text-secondary)", listStyleType: "none", padding: "0", marginTop: "8px", display: "flex", flexDirection: "column", gap: "4px" }}>
                     <li>• Igbo / Onitsha: Standardized audio reference locked (100% agreement)</li>
@@ -972,11 +980,11 @@ export default function App() {
                 <div>
                   <span className="wallet-subtext">EARNED REWARD POINT BALANCE</span>
                   <div className="wallet-balance">{points} Pts</div>
-                  <span className="wallet-subtext" style={{ color: "var(--primary)" }}>
+                  <span className="wallet-subtext" style={{ color: "var(--text-secondary)" }}>
                     Value equivalent: <strong>₦{(points * 10).toLocaleString()} NGN</strong>
                   </span>
                 </div>
-                <Coins size={36} color="#F59E0B" />
+                <Coins size={28} color="var(--text-secondary)" />
               </div>
             </div>
 
@@ -987,16 +995,17 @@ export default function App() {
               {showRedeemSuccess ? (
                 <div style={{ textAlign: "center", padding: "20px", display: "flex", flexDirection: "column", gap: "10px" }}>
                   <div style={{
-                    width: "48px",
-                    height: "48px",
+                    width: "40px",
+                    height: "40px",
                     borderRadius: "50%",
-                    backgroundColor: "rgba(16, 185, 129, 0.1)",
+                    backgroundColor: "rgba(255, 255, 255, 0.03)",
+                    border: "1px solid var(--border-subtle)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     margin: "0 auto"
                   }}>
-                    <CheckCircle size={24} color="#10B981" />
+                    <CheckCircle size={20} color="var(--success)" />
                   </div>
                   <h4 style={{ color: "var(--primary)" }}>Top-up Request Successful!</h4>
                   <p style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
@@ -1173,7 +1182,7 @@ export default function App() {
               </div>
 
               <div style={{ display: "flex", gap: "10px", alignItems: "flex-start", padding: "10px", background: "rgba(255,255,255,0.03)", borderRadius: "10px" }}>
-                <Info size={16} color="#10B981" style={{ flexShrink: 0, marginTop: "2px" }} />
+                <Info size={14} color="var(--text-secondary)" style={{ flexShrink: 0, marginTop: "2px" }} />
                 <div>
                   <h4 style={{ fontSize: "12px" }}>Dialect Bridge Insight</h4>
                   <p style={{ fontSize: "10px", color: "var(--text-secondary)", marginTop: "2px" }}>
@@ -1198,7 +1207,7 @@ export default function App() {
             {/* Dialects performance card */}
             <div className="glass-card">
               <h3 style={{ fontSize: "15px", marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
-                <TrendingUp size={16} color="#F59E0B" /> Top Contributing Dialects
+                <TrendingUp size={14} color="var(--text-secondary)" /> Top Contributing Dialects
               </h3>
 
               <div className="leaderboard-list">

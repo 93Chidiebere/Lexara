@@ -145,29 +145,64 @@ export const LANGUAGES_AND_DIALECTS = {
     "Nsukka",
     "Umuahia",
     "Ngwa",
-    "Arochukwu"
+    "Arochukwu",
+    "Mgbowo"
   ],
   "Yoruba": [
     "Standard Yoruba",
+    "Oyo",
     "Ijebu",
     "Egba",
     "Ijesha",
     "Ekiti",
-    "Ondo"
+    "Ondo",
+    "Yagba"
   ],
   "Hausa": [
     "Kano (Standard)",
     "Katsina",
     "Sokoto",
-    "Zaria"
+    "Zaria",
+    "Gobir",
+    "Daura"
   ],
   "Twi": [
     "Asante",
     "Akuapem",
-    "Fante"
+    "Fante",
+    "Bono"
   ],
   "Efik / Ibibio": [
     "Calabar",
-    "Uyo"
+    "Uyo",
+    "Oron",
+    "Eket"
+  ],
+  "Swahili (Kiswahili)": [
+    "Kiunguja (Standard)",
+    "Kimvita",
+    "Kiamu",
+    "Kingwana"
+  ],
+  "Amharic": [
+    "Addis Ababa (Standard)",
+    "Gojjam",
+    "Gondar",
+    "Wollo"
+  ],
+  "Zulu (isiZulu)": [
+    "KwaZulu-Natal (Standard)",
+    "Transvaal",
+    "Qwabe"
+  ],
+  "Wolof": [
+    "Dakar (Standard)",
+    "Saint-Louis",
+    "Baol"
+  ],
+  "Xhosa (isiXhosa)": [
+    "Gcaleka (Standard)",
+    "Thembu",
+    "Mpondo"
   ]
 };
