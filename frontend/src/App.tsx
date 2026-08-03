@@ -35,7 +35,7 @@ export default function App() {
   const [isRegistered, setIsRegistered] = useState<boolean>(false);
 
   // Solo mode state
-  const [activeStimulusIndex, setActiveStimulusIndex] = useState<number>(0);
+  const [activeStimulusIndex, setActiveStimulusIndex] = useState<number>(() => Math.floor(Math.random() * STIMULI.length));
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [recordingTime, setRecordingTime] = useState<number>(0);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);

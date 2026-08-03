@@ -133,6 +133,78 @@ export const STIMULI: Stimulus[] = [
         lexicalNotes: "Uses Nsukka dialect terms: 'Ẹya' (market), 'madụ' (people), and 'ẹrẹ' (food/provisions)."
       }
     }
+  },
+  {
+    id: "stim-pounding-yam",
+    title: "Pounding Yam in a Mortar",
+    category: "Food Preparation",
+    description: "Two young men rhythmically pounding boiled yams in a large wooden mortar with heavy pestles.",
+    imageUrl: "https://images.unsplash.com/photo-1596797038530-2c107229654b?auto=format&fit=crop&w=600&q=80",
+    audioPrompt: "Describe the men pounding yam and the tools they are using.",
+    dialectsData: {
+      "Onitsha": {
+        standard: "Ụmụ nwoke abụọ na-asụ ji n'ikwe.",
+        phonetic: "Ụmụ nwoke abụọ na-asụ ji n'ikwe",
+        audioMockText: "Ndị nwoke abụọ na-asụ ji n'ikwe.",
+        lexicalNotes: "Uses 'Ụmụ nwoke' and standard 'asụ ji' (pounding yam)."
+      },
+      "Owerri": {
+        standard: "Ụmụ nwoke abụọ na-asụ ji n'ime ikwe.",
+        phonetic: "Ụmụ nwoke abụọ na-asụ ji n'ime ikwe",
+        audioMockText: "Ụmụ nwoke abụọ na-asụ ji n'ime ikwe na mgbakwunye.",
+        lexicalNotes: "Uses standard 'ikwe' and Central Owerri phrasing."
+      },
+      "Abiriba": {
+        standard: "Ụmụ nwoke abụọ na-agbaji ji n'okwe.",
+        phonetic: "Ụmụ nwoke abụọ na-agbaji ji n'okwe",
+        audioMockText: "Ụmụ nwoke abụọ na-agbaji ji n'okwe.",
+        lexicalNotes: "Uses 'agbaji' for pounding/crushing action and 'okwe' instead of 'ikwe'."
+      }
+    }
+  },
+  {
+    id: "stim-danfo",
+    title: "Danfo Buses in Traffic",
+    category: "Urban Life",
+    description: "Iconic yellow Danfo transit buses lined up in traffic under a flyover in Lagos.",
+    imageUrl: "https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?auto=format&fit=crop&w=600&q=80",
+    audioPrompt: "Describe the heavy traffic and yellow commercial transit buses.",
+    dialectsData: {
+      "Onitsha": {
+        standard: "Ọtụtụ bọs na-acha edo edo n'okporo ụzọ n'ime afia.",
+        phonetic: "Ọtụtụ bọs na-acha edo edo n'okporo ụzọ...",
+        audioMockText: "Bọs Danfo na-acha edo edo tọrọ n'okporo ụzọ.",
+        lexicalNotes: "Refers to yellow color 'acha edo edo'."
+      },
+      "Owerri": {
+        standard: "Ọtụtụ bọs na-acha edo edo n'okporo ụzọ na tọrafịkị.",
+        phonetic: "Ọtụtụ bọs na-acha edo edo na tọrafịkị",
+        audioMockText: "Bọs Danfo tọrọ na tọrafịkị n'okporo ụzọ Lagos.",
+        lexicalNotes: "Uses English loanword 'tọrafịkị' adapted to Igbo orthography."
+      }
+    }
+  },
+  {
+    id: "stim-boli",
+    title: "Roadside Boli Vendor",
+    category: "Street Food",
+    description: "A vendor roasting sweet yellow plantains (boli) and fresh fish over an open-air charcoal grill.",
+    imageUrl: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=600&q=80",
+    audioPrompt: "Describe the roadside vendor roasting plantains over hot charcoal.",
+    dialectsData: {
+      "Onitsha": {
+        standard: "Nwanyị na-arii unere (boli) n'okporo ụzọ.",
+        phonetic: "Nwanyị na-arii unere n'okporo ụzọ",
+        audioMockText: "Nwanyị na-arii unere n'elu unyị ọkụ.",
+        lexicalNotes: "Uses 'unere' for plantain/banana."
+      },
+      "Owerri": {
+        standard: "Nwaanyi na-asa ugede n'elu unyi oku.",
+        phonetic: "Nwaanyi na-asa ugede n'elu unyi oku",
+        audioMockText: "Nwaanyi na-asa ugede n'elu unyi oku n'okporo uzo.",
+        lexicalNotes: "Uses 'ugede' or 'abirika' for plantain, and 'asa' (roasting/toasting)."
+      }
+    }
   }
 ];
 
