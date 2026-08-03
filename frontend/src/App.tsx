@@ -342,6 +342,13 @@ export default function App() {
     setValidationResult(null);
   };
 
+  const prevStimulus = () => {
+    setActiveStimulusIndex((prev) => (prev - 1 + STIMULI.length) % STIMULI.length);
+    setAudioBlob(null);
+    setAudioUrl(null);
+    setValidationResult(null);
+  };
+
   // Handle registration onboarding
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
@@ -449,7 +456,10 @@ export default function App() {
     <div className="app-container">
       {/* Top Application Bar */}
       <header className="app-header">
-        <div className="app-title-group">
+        <div className="app-title-group" style={{ cursor: "pointer" }} onClick={() => {
+          setIsRegistered(false);
+          setCurrentScreen("onboarding");
+        }} title="Reset setup & profile">
           <Globe className="app-logo-icon" size={18} color="var(--primary)" />
           <h1 className="app-logo">LEXARA</h1>
         </div>
@@ -556,11 +566,31 @@ export default function App() {
               <div>
                 <h2 style={{ fontSize: "20px" }}>Solo Mode</h2>
                 <p style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
-                  Speaking: <strong>{dialect} {language}</strong>
+                  Speaking: <strong>{dialect} {language}</strong>{" "}
+                  <span 
+                    onClick={() => {
+                      setIsRegistered(false);
+                      setCurrentScreen("onboarding");
+                    }} 
+                    style={{ 
+                      color: "var(--text-primary)", 
+                      textDecoration: "underline", 
+                      cursor: "pointer", 
+                      marginLeft: "6px",
+                      fontSize: "11px",
+                      fontWeight: "500"
+                    }}
+                    title="Change language or dialect"
+                  >
+                    Change
+                  </span>
                 </p>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <button className="btn-skip" onClick={nextStimulus}>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <button className="btn-skip" onClick={prevStimulus} style={{ padding: "4px 8px" }}>
+                  Prev
+                </button>
+                <button className="btn-skip" onClick={nextStimulus} style={{ padding: "4px 8px" }}>
                   Next
                 </button>
                 <span className={`status-pill ${backendStatus}`} style={{
