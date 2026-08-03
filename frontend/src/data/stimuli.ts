@@ -146,7 +146,8 @@ export const LANGUAGES_AND_DIALECTS = {
     "Umuahia",
     "Ngwa",
     "Arochukwu",
-    "Mgbowo"
+    "Mgbowo",
+    "Others"
   ],
   "Yoruba": [
     "Standard Yoruba",
