@@ -2,37 +2,40 @@ import React, { useState, useEffect, useRef } from "react";
 import {
   Mic,
   Square,
-  Volume2,
   Users,
   Wallet,
   Globe,
   Award,
   BookOpen,
-  ArrowRight,
-  TrendingUp,
   Coins,
   CheckCircle,
   AlertTriangle,
   RotateCcw,
-  Sparkles,
-  Info,
-  ChevronRight,
-  ShieldCheck
+  ShieldCheck,
+  Plus
 } from "lucide-react";
 import { STIMULI, LANGUAGES_AND_DIALECTS } from "./data/stimuli";
 import type { Stimulus } from "./data/stimuli";
 
-export default function App() {
-  // Navigation: "onboarding" | "solo" | "multiplayer" | "wallet" | "bridge" | "leaderboard"
-  const [currentScreen, setCurrentScreen] = useState<string>("onboarding");
+const API_BASE = "http://localhost:8000";
 
-  // User profile state
-  const [username, setUsername] = useState<string>("");
-  const [language, setLanguage] = useState<string>("Igbo");
-  const [dialect, setDialect] = useState<string>("Abiriba");
-  const [points, setPoints] = useState<number>(120); // Starting points
-  const [level, setLevel] = useState<number>(1);
+export default function App() {
+  // Navigation: "onboarding" | "solo" | "multiplayer" | "wallet" | "bridge" | "leaderboard" | "admin"
+  const [currentScreen, setCurrentScreen] = useState<string>("onboarding");
   const [isRegistered, setIsRegistered] = useState<boolean>(false);
+  const [authTab, setAuthTab] = useState<"login" | "signup">("login");
+
+  // User Profile State
+  const [username, setUsername] = useState<string>("");
+  const [loginPassword, setLoginPassword] = useState<string>("");
+  const [signupPassword, setSignupPassword] = useState<string>("");
+  const [language, setLanguage] = useState<string>("Igbo");
+  const [dialect, setDialect] = useState<string>(""); // optional at signup
+  const [points, setPoints] = useState<number>(120);
+  const [soloProgress, setSoloProgress] = useState<number>(0);
+  const [activeDialect, setActiveDialect] = useState<string>(""); // chosen dynamically during gameplay
+  const [errorMsg, setErrorMsg] = useState<string>("");
+  const [successMsg, setSuccessMsg] = useState<string>("");
 
   // Solo mode state
   const [activeStimulusIndex, setActiveStimulusIndex] = useState<number>(() => Math.floor(Math.random() * STIMULI.length));
@@ -45,10 +48,6 @@ export default function App() {
   const [backendStatus, setBackendStatus] = useState<"checking" | "online" | "offline">("checking");
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
 
-  const handleImageError = (id: string) => {
-    setImageErrors((prev) => ({ ...prev, [id]: true }));
-  };
-
   // Audio recording hardware hooks
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -56,132 +55,95 @@ export default function App() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const timerIntervalRef = useRef<any>(null);
 
-  // Multiplayer mode simulation state
+  // Multiplayer Live Room State
+  const [roomCode, setRoomCode] = useState<string>("");
   const [lobbyState, setLobbyState] = useState<"lobby" | "selecting" | "describing" | "voting" | "consensus">("lobby");
-  const [multiplayerStimulus, setMultiplayerStimulus] = useState<Stimulus>(STIMULI[1]); // Grinding Pepper
-  const [multiplayerTimer, setMultiplayerTimer] = useState<number>(0);
-  const [peerSubmissions, setPeerSubmissions] = useState<any[]>([]);
-  const [peerVotes, setPeerVotes] = useState<any>({});
-  const [hasVotedAll, setHasVotedAll] = useState<boolean>(false);
+  const [connectedPlayers, setConnectedPlayers] = useState<any[]>([]);
+  const [hostUsername, setHostUsername] = useState<string>("");
+  const [wsStimulusId, setWsStimulusId] = useState<string>("");
+  const [roomConsensusProgress, setRoomConsensusProgress] = useState<number>(0);
+  const [wsSubmissions, setWsSubmissions] = useState<any[]>([]);
+  const [wsVotes, setWsVotes] = useState<any>({});
+  const [wsCorrections, setWsCorrections] = useState<any>({});
+  const [lobbyError, setLobbyError] = useState<string>("");
+  const [multiplayerNotify, setMultiplayerNotify] = useState<string>("");
+  const wsRef = useRef<WebSocket | null>(null);
 
-  // Wallet State
-  const [airtimeCarrier, setAirtimeCarrier] = useState<string>("MTN");
-  const [airtimePhone, setAirtimePhone] = useState<string>("");
-  const [redeemAmount, setRedeemAmount] = useState<number>(50); // Points to redeem
-  const [transactions, setTransactions] = useState<any[]>([
-    { id: "tx-1", type: "solo", detail: "Solo Description (Mug)", points: 10, date: "Today, 11:20 AM" },
-    { id: "tx-2", type: "multi", detail: "Multiplayer Consensus Bonus", points: 25, date: "Yesterday, 4:15 PM" },
-    { id: "tx-3", type: "redeem", detail: "Airtime Top-up (MTN)", points: -50, date: "2 days ago" }
-  ]);
-  const [showRedeemSuccess, setShowRedeemSuccess] = useState<boolean>(false);
+  // Admin Dashboard State
+  const [adminSubmissions, setAdminSubmissions] = useState<any[]>([]);
+  const [adminFilter, setAdminFilter] = useState<string>("all");
+  const [editingTexts, setEditingTexts] = useState<Record<number, string>>({});
 
-  // Dialect Bridge Playground State
-  const [bridgeSource, setBridgeSource] = useState<string>("Abiriba");
-  const [bridgeTarget, setBridgeTarget] = useState<string>("Nnewi");
-  const [bridgePhraseIndex, setBridgePhraseIndex] = useState<number>(0);
-
-  // Pre-configured phrases for the Dialect Bridge
-  const BRIDGE_PHRASES = [
-    {
-      concept: "A mug is sitting on top of the table",
-      standard: "Kọpụ eji añụ mmiri dị n'elu tebulu.",
-      translations: {
-        "Abiriba": { text: "Ihe awiko ndyo ibo nakwea kop, eji ya umiri, ona cho baro obara.", audioText: "Ihe awiko ndyo ibo nakwea kop..." },
-        "Nnewi": { text: "Ihe eji añụ mmiri tọrọ n'elu tebulu.", audioText: "Ihe eji añụ mmiri tọrọ..." },
-        "Onitsha": { text: "Kọpụ eji anụ mmiri sị n'elu tebulu.", audioText: "Kọpụ eji anụ mmiri sị..." },
-        "Owerri": { text: "Kọpụ eji añụ mmiri dị n'elu tebulu.", audioText: "Kọpụ eji añụ mmiri dị..." }
-      }
-    },
-    {
-      concept: "The woman is pounding peppers inside a mortar",
-      standard: "Nwaanyi na-asu ose n'ime ikwe.",
-      translations: {
-        "Abiriba": { text: "Nwanyị na-agbaji ose n'okwe.", audioText: "Nwanyị na-agbaji ose n'okwe" },
-        "Nnewi": { text: "Nwaanyi na-asu ose n'ikwe.", audioText: "Nwaanyi na-asu ose n'ikwe" },
-        "Onitsha": { text: "Nwanyị na-asụ ose n'ikwe.", audioText: "Nwanyị na-asụ ose n'ikwe" },
-        "Owerri": { text: "Nwaanyi na-asu ose n'ime ikwe.", audioText: "Nwaanyi na-asu ose n'ime ikwe" }
-      }
-    }
-  ];
-
-  // Check backend server health on load
+  // Check backend health
   useEffect(() => {
-    fetch("http://localhost:8000/api/health")
+    fetch(`${API_BASE}/api/health`)
       .then((res) => res.json())
-      .then((data) => {
-        if (data.status) setBackendStatus("online");
-        else setBackendStatus("offline");
-      })
+      .then(() => setBackendStatus("online"))
       .catch(() => setBackendStatus("offline"));
   }, []);
 
-  // Level computation logic based on points
+  // Update Active Dialect when language changes
   useEffect(() => {
-    const computedLevel = Math.floor(points / 100) + 1;
-    if (computedLevel !== level && computedLevel > 0) {
-      setLevel(computedLevel);
+    const dialects = (LANGUAGES_AND_DIALECTS as any)[language] || [];
+    if (dialects.length > 0) {
+      setActiveDialect(dialects[0]);
+    } else {
+      setActiveDialect("");
     }
-  }, [points]);
+  }, [language]);
 
-  // Audio Recording visualizer drawing
-  const startCanvasDrawing = (stream: MediaStream) => {
-    if (!canvasRef.current) return;
+  // Audio recorder canvas wave animation
+  const drawWaveform = (analyser: AnalyserNode, dataArray: any) => {
+    if (!canvasRef.current || !isRecording) return;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const source = audioContext.createMediaStreamSource(stream);
-    const analyser = audioContext.createAnalyser();
-    analyser.fftSize = 256;
-    source.connect(analyser);
+    const width = canvas.width;
+    const height = canvas.height;
 
-    const bufferLength = analyser.frequencyBinCount;
-    const dataArray = new Uint8Array(bufferLength);
+    analyser.getByteFrequencyData(dataArray);
 
-    const draw = () => {
-      if (!isRecording) return;
-      animationFrameRef.current = requestAnimationFrame(draw);
-      analyser.getByteFrequencyData(dataArray);
+    ctx.fillStyle = "#16171A";
+    ctx.fillRect(0, 0, width, height);
 
-      ctx.fillStyle = "#16171A";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const barWidth = (width / dataArray.length) * 1.5;
+    let barHeight;
+    let x = 0;
 
-      const barWidth = (canvas.width / bufferLength) * 2.5;
-      let barHeight;
-      let x = 0;
+    for (let i = 0; i < dataArray.length; i++) {
+      barHeight = dataArray[i] / 1.5;
+      
+      // Clean modern white bars instead of neon gradients
+      ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(1, barHeight / 80)})`;
+      ctx.fillRect(x, height - barHeight, barWidth - 1, barHeight);
 
-      for (let i = 0; i < bufferLength; i++) {
-        barHeight = dataArray[i] / 2;
-        const opacity = Math.min(barHeight / 100, 1);
-        ctx.fillStyle = `rgba(255, 255, 255, ${opacity * 0.8 + 0.2})`;
-        ctx.fillRect(x, canvas.height / 2 - barHeight / 2, barWidth - 2, barHeight);
-        x += barWidth;
-      }
-    };
-    draw();
+      x += barWidth;
+    }
+
+    animationFrameRef.current = requestAnimationFrame(() => drawWaveform(analyser, dataArray));
   };
 
-  // Start Audio Recording
+  // Start Voice Recording
   const startRecording = async () => {
-    audioChunksRef.current = [];
-    setAudioBlob(null);
-    setAudioUrl(null);
+    setErrorMsg("");
     setValidationResult(null);
+    audioChunksRef.current = [];
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const options = { mimeType: "audio/webm" };
-      let mediaRecorder;
-
-      try {
-        mediaRecorder = new MediaRecorder(stream, options);
-      } catch (e) {
-        // Fallback for Safari/iOS
-        mediaRecorder = new MediaRecorder(stream);
-      }
-
+      const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
+
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const source = audioCtx.createMediaStreamSource(stream);
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 64; // Small size for neat bar graphs
+      source.connect(analyser);
+
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
@@ -196,145 +158,80 @@ export default function App() {
         stream.getTracks().forEach((track) => track.stop());
       };
 
+      setIsRecording(true);
+      setRecordingTime(0);
       mediaRecorder.start();
-      setIsRecording(true);
-      setRecordingTime(0);
 
-      // Start timer
       timerIntervalRef.current = setInterval(() => {
         setRecordingTime((prev) => prev + 1);
       }, 1000);
 
-      // Start waveform drawing
-      setTimeout(() => startCanvasDrawing(stream), 100);
+      // Launch canvas visualizer loop
+      setTimeout(() => {
+        drawWaveform(analyser, dataArray);
+      }, 100);
+
     } catch (err) {
-      console.error("Microphone access failed:", err);
-      // Fallback: simulated recording if hardware not available
-      setIsRecording(true);
-      setRecordingTime(0);
-      timerIntervalRef.current = setInterval(() => {
-        setRecordingTime((prev) => prev + 1);
-      }, 1000);
+      setErrorMsg("Microphone access denied. Please verify input permissions.");
     }
   };
 
-  // Stop Audio Recording
+  // Stop Recording
   const stopRecording = () => {
-    if (timerIntervalRef.current) {
-      clearInterval(timerIntervalRef.current);
-    }
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+    if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
-    }
-    setIsRecording(false);
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
+      setIsRecording(false);
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     }
   };
 
-  // Submit Description to Python Backend or Simulation
-  const submitDescription = async () => {
-    if (!audioBlob) {
-      // Fallback: If microphone hardware was simulated, do a local simulation
-      simulateValidation();
-      return;
-    }
-
+  // Submit Solo Recording for Validation
+  const submitSoloValidation = async () => {
+    if (!audioBlob) return;
     setIsValidating(true);
-
-    const activeStimulus = STIMULI[activeStimulusIndex];
-    const formData = new FormData();
-    formData.append("audio", audioBlob, "description.wav");
-    
-    // We will append a placeholder image or fetch the active image to append as blob
-    try {
-      const responseImg = await fetch(activeStimulus.imageUrl);
-      const imgBlob = await responseImg.blob();
-      formData.append("image", imgBlob, "image.jpg");
-    } catch {
-      // Fallback empty blob
-      formData.append("image", new Blob(), "image.jpg");
-    }
-
-    formData.append("language", language);
-    formData.append("username", username || "Lexara User");
-    formData.append("image_id", activeStimulus.id);
+    setErrorMsg("");
 
     try {
-      const response = await fetch("http://localhost:8000/api/validate", {
+      const activeStim = STIMULI[activeStimulusIndex];
+      
+      // Fetch stimulus image to file conversion
+      const response = await fetch(activeStim.imageUrl);
+      const blob = await response.blob();
+      const imageFile = new File([blob], "stimulus.jpg", { type: blob.type });
+
+      const formData = new FormData();
+      formData.append("audio", audioBlob, "recording.wav");
+      formData.append("image", imageFile);
+      formData.append("language", language);
+      formData.append("dialect", activeDialect);
+      formData.append("username", username);
+      formData.append("image_id", activeStim.id);
+
+      const res = await fetch(`${API_BASE}/api/validate`, {
         method: "POST",
-        body: formData,
+        body: formData
       });
 
-      if (!response.ok) {
-        throw new Error("Server error validation");
+      if (!res.ok) {
+        throw new Error("Validation endpoint responded with error");
       }
 
-      const result = await response.json();
-      setValidationResult(result);
-      setPoints((prev) => prev + result.points_earned);
+      const data = await res.json();
+      setValidationResult(data);
       
-      if (result.points_earned > 0) {
-        setTransactions((prev) => [
-          {
-            id: `tx-${Date.now()}`,
-            type: "solo",
-            detail: `Solo Validation (${activeStimulus.title})`,
-            points: result.points_earned,
-            date: "Just now"
-          },
-          ...prev
-        ]);
-      }
-    } catch (err) {
-      console.warn("Backend unavailable, running high-fidelity local simulator:", err);
-      simulateValidation();
+      // Update global coins and solo validation counts
+      setPoints(data.new_points);
+      setSoloProgress(data.new_progress);
+      
+    } catch (e: any) {
+      setErrorMsg("Failed to connect to backend server. Make sure uvicorn is running on port 8000.");
     } finally {
       setIsValidating(false);
     }
   };
 
-  // Simulation fallback in case backend is offline
-  const simulateValidation = () => {
-    setIsValidating(true);
-    setTimeout(() => {
-      const activeStimulus = STIMULI[activeStimulusIndex];
-      const successChance = Math.random() > 0.15; // 85% success rate for simulation
-      const confidence = successChance ? Math.floor(Math.random() * 21) + 80 : Math.floor(Math.random() * 30) + 20;
-      
-      const accept = confidence >= 50;
-      const points_earned = confidence >= 80 ? 10 : (confidence >= 50 ? 5 : 0);
-
-      const result = {
-        confidence,
-        accept,
-        feedback_message: accept 
-          ? `Great! Your ${dialect} description perfectly matched the visual content.` 
-          : `We noticed spelling/dialect shifts. Please record in pure ${dialect}.`,
-        points_earned,
-        language_detected: language
-      };
-
-      setValidationResult(result);
-      setPoints((prev) => prev + points_earned);
-      
-      if (points_earned > 0) {
-        setTransactions((prev) => [
-          {
-            id: `tx-${Date.now()}`,
-            type: "solo",
-            detail: `Solo Validation (${activeStimulus.title} in ${dialect})`,
-            points: points_earned,
-            date: "Just now"
-          },
-          ...prev
-        ]);
-      }
-      setIsValidating(false);
-    }, 2000);
-  };
-
-  // Skip / Next Stimulus in Solo mode
+  // Cycle Stimulus Deck
   const nextStimulus = () => {
     setActiveStimulusIndex((prev) => (prev + 1) % STIMULI.length);
     setAudioBlob(null);
@@ -349,108 +246,348 @@ export default function App() {
     setValidationResult(null);
   };
 
-  // Handle registration onboarding
-  const handleRegister = (e: React.FormEvent) => {
+  // User auth actions
+  const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username.trim()) return;
-    setIsRegistered(true);
-    setCurrentScreen("solo");
-  };
+    setErrorMsg("");
+    setSuccessMsg("");
 
-  // Simulated Multiplayer Game Loop
-  const startMultiplayerLobby = () => {
-    setLobbyState("lobby");
-    setPeerSubmissions([]);
-    setPeerVotes({});
-    setHasVotedAll(false);
-    
-    // Auto sequence of multiplayer game
-    setTimeout(() => {
-      setLobbyState("selecting");
-    }, 1000);
-  };
+    if (!username.trim()) {
+      setErrorMsg("Please enter a username.");
+      return;
+    }
 
-  // Select stimulus in multiplayer lobby simulation
-  const selectMultiplayerStimulus = (stim: Stimulus) => {
-    setMultiplayerStimulus(stim);
-    setLobbyState("describing");
-    setMultiplayerTimer(30);
+    const payload = {
+      username: username,
+      password: authTab === "login" ? loginPassword : signupPassword,
+      language: language,
+      dialect: dialect // optional signup dialect
+    };
 
-    // Peer submissions timeline simulation
-    const timerInterval = setInterval(() => {
-      setMultiplayerTimer((prev) => {
-        if (prev <= 1) {
-          clearInterval(timerInterval);
-          startVotingPhase();
-          return 0;
-        }
-        return prev - 1;
+    try {
+      const endpoint = authTab === "login" ? "/api/login" : "/api/signup";
+      const res = await fetch(`${API_BASE}${endpoint}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
       });
-    }, 1000);
-  };
 
-  // Simulate other players submitting descriptions
-  const startVotingPhase = () => {
-    setLobbyState("voting");
-    
-    // Peer submissions list
-    const peers = [
-      { id: "peer-1", name: "Chinedu", dialect: "Onitsha", text: multiplayerStimulus.dialectsData["Onitsha"]?.standard || "Standard version description", audioLen: 4.2 },
-      { id: "peer-2", name: "Adaeze", dialect: "Owerri", text: multiplayerStimulus.dialectsData["Owerri"]?.standard || "Central version description", audioLen: 5.5 },
-      { id: "peer-3", name: "Kalu", dialect: "Abiriba", text: multiplayerStimulus.dialectsData["Abiriba"]?.standard || "Abiriba version description", audioLen: 6.8 }
-    ];
-
-    setPeerSubmissions(peers.filter(p => p.dialect !== dialect)); // Filter out if matching user dialect for voting variety
-  };
-
-  // Vote on peer submission
-  const handleVote = (peerId: string, approve: boolean) => {
-    setPeerVotes((prev: any) => {
-      const updated = { ...prev, [peerId]: approve };
-      if (Object.keys(updated).length === peerSubmissions.length) {
-        setHasVotedAll(true);
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.detail || "Authentication request failed");
       }
-      return updated;
-    });
+
+      const userData = await res.json();
+      
+      if (authTab === "signup") {
+        setSuccessMsg("Account created! Please enter password below to Sign In.");
+        setAuthTab("login");
+        return;
+      }
+
+      // Login Successful
+      setUsername(userData.username);
+      setLanguage(userData.language);
+      setPoints(userData.points);
+      setSoloProgress(userData.solo_progress);
+      if (userData.dialect) {
+        setActiveDialect(userData.dialect);
+      }
+      setIsRegistered(true);
+      setCurrentScreen("solo");
+
+    } catch (e: any) {
+      setErrorMsg(e.message || "Cannot establish connection to database backend.");
+    }
   };
 
-  // Consensus summary phase
-  const finishVoting = () => {
-    setLobbyState("consensus");
-    setPoints((prev) => prev + 15); // Add multiplayer bonus points
-    setTransactions((prev) => [
-      {
-        id: `tx-${Date.now()}`,
-        type: "multi",
-        detail: `Multiplayer Consensus (${multiplayerStimulus.title})`,
-        points: 15,
-        date: "Just now"
-      },
-      ...prev
-    ]);
+  // WEBSOCKET MULTIPLAYER GAMEPLAY
+
+  const joinMultiplayerLobby = () => {
+    setLobbyError("");
+    setMultiplayerNotify("");
+    if (!roomCode.trim()) {
+      setLobbyError("Please enter a 4-digit Room Code");
+      return;
+    }
+
+    // Connect to Backend WebSocket
+    const ws = new WebSocket(
+      `ws://localhost:8000/ws/lobby/${roomCode.trim()}?username=${username}&language=${language}&dialect=${activeDialect}`
+    );
+    wsRef.current = ws;
+
+    ws.onopen = () => {
+      setLobbyState("lobby");
+    };
+
+    ws.onmessage = (event) => {
+      const message = jsonParse(event.data);
+      if (!message) return;
+
+      if (message.type === "error") {
+        setLobbyError(message.message);
+        ws.close();
+      } else if (message.type === "room_state") {
+        setConnectedPlayers(message.players);
+        setHostUsername(message.host);
+        setLobbyState(message.status === "selecting" ? "lobby" : message.status);
+        setWsStimulusId(message.stimulus_id);
+        setRoomConsensusProgress(message.consensus_progress);
+        setWsSubmissions(message.submissions);
+        setWsVotes(message.votes);
+        setWsCorrections(message.corrections);
+      } else if (message.type === "stimulus_selected") {
+        setWsStimulusId(message.stimulus_id);
+        setLobbyState("describing");
+        setWsSubmissions([]);
+        setWsVotes({});
+        setWsCorrections({});
+      } else if (message.type === "peer_submission") {
+        setWsSubmissions(message.submissions);
+      } else if (message.type === "voting_phase") {
+        setLobbyState("voting");
+      } else if (message.type === "votes_updated") {
+        setWsVotes(message.votes);
+      } else if (message.type === "corrections_updated") {
+        setWsCorrections(message.corrections);
+      } else if (message.type === "consensus_coin_awarded") {
+        setMultiplayerNotify(message.message);
+        // Refresh player points from database
+        refreshPoints();
+      } else if (message.type === "consensus_committed") {
+        setRoomConsensusProgress(message.consensus_progress);
+        setLobbyState("lobby");
+        setWsStimulusId("");
+        setWsSubmissions([]);
+        setWsVotes({});
+        setWsCorrections({});
+        refreshPoints();
+      }
+    };
+
+    ws.onclose = () => {
+      // Return to selection lobby
+      wsRef.current = null;
+    };
   };
 
-  // Handle Airtime redemption logic
-  const handleRedeem = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (points < redeemAmount) return;
+  const refreshPoints = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password: loginPassword })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPoints(data.points);
+        setSoloProgress(data.solo_progress);
+      }
+    } catch (e) {}
+  };
 
-    setPoints((prev) => prev - redeemAmount);
-    setTransactions((prev) => [
-      {
-        id: `tx-${Date.now()}`,
-        type: "redeem",
-        detail: `Redeemed ${redeemAmount} pts to ${airtimeCarrier} Airtime`,
-        points: -redeemAmount,
-        date: "Just now"
-      },
-      ...prev
-    ]);
-    setShowRedeemSuccess(true);
+  const createMultiplayerLobby = () => {
+    // Generate simple 4 digit room code
+    const newCode = Math.floor(1000 + Math.random() * 9000).toString();
+    setRoomCode(newCode);
+    
+    // Connect WebSocket as Host
     setTimeout(() => {
-      setShowRedeemSuccess(false);
-    }, 4000);
+      const ws = new WebSocket(
+        `ws://localhost:8000/ws/lobby/${newCode}?username=${username}&language=${language}&dialect=${activeDialect}`
+      );
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        setLobbyState("lobby");
+      };
+
+      ws.onmessage = (event) => {
+        const message = jsonParse(event.data);
+        if (!message) return;
+
+        if (message.type === "room_state") {
+          setConnectedPlayers(message.players);
+          setHostUsername(message.host);
+          setLobbyState(message.status === "selecting" ? "lobby" : message.status);
+          setWsStimulusId(message.stimulus_id);
+          setRoomConsensusProgress(message.consensus_progress);
+          setWsSubmissions(message.submissions);
+          setWsVotes(message.votes);
+          setWsCorrections(message.corrections);
+        } else if (message.type === "peer_submission") {
+          setWsSubmissions(message.submissions);
+        } else if (message.type === "votes_updated") {
+          setWsVotes(message.votes);
+        } else if (message.type === "corrections_updated") {
+          setWsCorrections(message.corrections);
+        } else if (message.type === "consensus_coin_awarded") {
+          setMultiplayerNotify(message.message);
+          refreshPoints();
+        } else if (message.type === "consensus_committed") {
+          setRoomConsensusProgress(message.consensus_progress);
+          setLobbyState("lobby");
+          setWsStimulusId("");
+          setWsSubmissions([]);
+          setWsVotes({});
+          setWsCorrections({});
+          refreshPoints();
+        }
+      };
+
+      ws.onclose = () => {
+        wsRef.current = null;
+      };
+    }, 100);
   };
+
+  const jsonParse = (data: string) => {
+    try {
+      return JSON.parse(data);
+    } catch (e) {
+      return null;
+    }
+  };
+
+  const leaveMultiplayerRoom = () => {
+    if (wsRef.current) {
+      wsRef.current.close();
+    }
+    setLobbyState("lobby");
+    setConnectedPlayers([]);
+    setRoomCode("");
+  };
+
+  // Host starts match by selecting a visual stimulus card
+  const selectMultiplayerStimulus = (stim: Stimulus) => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
+        type: "select_stimulus",
+        stimulus_id: stim.id
+      }));
+    }
+  };
+
+  // Peer uploads spoken audio, transcribes, and broadcasts to room
+  const submitMultiplayerRecording = async () => {
+    if (!audioBlob) return;
+    setIsValidating(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("audio", audioBlob, "recording.wav");
+
+      const res = await fetch(`${API_BASE}/api/upload-audio`, {
+        method: "POST",
+        body: formData
+      });
+
+      if (!res.ok) throw new Error("Audio upload failed");
+      const data = await res.json();
+
+      // Send to room via WebSockets
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({
+          type: "speech_submitted",
+          text: data.transcription,
+          audio_url: data.audio_url
+        }));
+      }
+      
+      setAudioBlob(null);
+      setAudioUrl(null);
+      setLobbyState("voting");
+
+    } catch (e) {
+      setErrorMsg("Failed to upload audio description for consensus.");
+    } finally {
+      setIsValidating(false);
+    }
+  };
+
+  const transitionToVoting = () => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
+        type: "transition_voting"
+      }));
+    }
+  };
+
+  const castVote = (targetUser: string, approve: boolean) => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
+        type: "submit_vote",
+        target_user: targetUser,
+        approve: approve
+      }));
+    }
+  };
+
+  const submitSpellingCorrection = (targetUser: string, text: string) => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
+        type: "suggest_correction",
+        target_user: targetUser,
+        text: text
+      }));
+    }
+  };
+
+  const commitLobbyConsensus = (finalSubmissionsMap: Record<string, {approved: boolean, text: string}>) => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
+        type: "commit_consensus",
+        final_submissions: finalSubmissionsMap
+      }));
+    }
+  };
+
+
+  // ADMIN BOARD SUBMISSIONS MANAGEMENT
+
+  const fetchAdminSubmissions = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/submissions`);
+      if (res.ok) {
+        const data = await res.json();
+        setAdminSubmissions(data);
+      }
+    } catch (e) {}
+  };
+
+  useEffect(() => {
+    if (currentScreen === "admin") {
+      fetchAdminSubmissions();
+    }
+  }, [currentScreen]);
+
+  const verifySubmission = async (id: number, status: "approved" | "rejected", consensusText?: string) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          submission_id: id,
+          status: status,
+          consensus_text: consensusText
+        })
+      });
+
+      if (res.ok) {
+        // Refresh local table
+        fetchAdminSubmissions();
+      }
+    } catch (e) {}
+  };
+
+  // Image load error fallback handlers
+  const handleImageError = (id: string) => {
+    setImageErrors((prev) => ({ ...prev, [id]: true }));
+  };
+
+  const activeStimulus = STIMULI[activeStimulusIndex];
+  const activeWsStimulus = STIMULI.find(s => s.id === wsStimulusId) || STIMULI[0];
 
   return (
     <div className="app-container">
@@ -459,6 +596,7 @@ export default function App() {
         <div className="app-title-group" style={{ cursor: "pointer" }} onClick={() => {
           setIsRegistered(false);
           setCurrentScreen("onboarding");
+          if (wsRef.current) wsRef.current.close();
         }} title="Reset setup & profile">
           <Globe className="app-logo-icon" size={18} color="var(--primary)" />
           <h1 className="app-logo">LEXARA</h1>
@@ -469,104 +607,191 @@ export default function App() {
             {/* User Level */}
             <div className="user-status-badge">
               <Award size={13} color="var(--text-secondary)" />
-              <span>Lvl {level}</span>
+              <span>Lvl {points >= 150 ? 3 : points >= 130 ? 2 : 1}</span>
             </div>
-            {/* User Wallet Balance */}
-            <div className="user-status-badge points" onClick={() => setCurrentScreen("wallet")} style={{ cursor: "pointer" }}>
-              <Coins size={13} color="var(--text-secondary)" />
+
+            {/* Wallet Tracker */}
+            <div className="user-status-badge points-badge" onClick={() => setCurrentScreen("wallet")}>
+              <Coins size={13} color="var(--primary)" />
               <span>{points} Pts</span>
             </div>
+            
+            {/* Admin Dashboard Entry */}
+            {username === "admin" && (
+              <button 
+                onClick={() => setCurrentScreen(currentScreen === "admin" ? "solo" : "admin")}
+                className="btn-skip"
+                style={{ background: currentScreen === "admin" ? "var(--primary)" : "none", color: currentScreen === "admin" ? "black" : "white" }}
+              >
+                Admin
+              </button>
+            )}
           </div>
         )}
       </header>
 
-      {/* Main Screen Content Router */}
-      <main className="app-content">
+      {/* Main Container */}
+      <main className="app-main">
         
-        {/* SCREEN 1: ONBOARDING */}
-        {currentScreen === "onboarding" && !isRegistered && (
-          <div className="onboarding-screen slide-up">
-            <div className="onboarding-logo">
-              <span className="logo-main gradient-text">Lexara</span>
-              <p style={{ color: "var(--text-secondary)", marginTop: "8px", fontSize: "14px" }}>
-                AI gamification for African dialects. Describe events and items to preserve your dialect, while earning convertible coins for cash or mobile airtime.
+        {/* SCREEN 1: ONBOARDING LOGIN/SIGNUP */}
+        {!isRegistered && (
+          <div className="slide-up" style={{ maxWidth: "420px", margin: "20px auto 0 auto" }}>
+            
+            <div style={{ textAlign: "center", marginBottom: "20px" }}>
+              <h2 style={{ fontSize: "24px", fontWeight: "700", letterSpacing: "-0.5px" }}>Spontaneous Dialect Validation</h2>
+              <p style={{ color: "var(--text-secondary)", fontSize: "14px", marginTop: "6px" }}>
+                Preserving underrepresented African languages through real-time game verification.
               </p>
             </div>
 
-            <form onSubmit={handleRegister} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-              <div className="form-group">
-                <label className="form-label">Speaker Nickname</label>
-                <input
-                  type="text"
-                  className="text-input"
-                  placeholder="Enter username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Native Language</label>
-                <select
-                  className="select-input"
-                  value={language}
-                  onChange={(e) => {
-                    setLanguage(e.target.value);
-                    const dialects = (LANGUAGES_AND_DIALECTS as any)[e.target.value] || [];
-                    setDialect(dialects[0] || "");
-                  }}
-                >
-                  {Object.keys(LANGUAGES_AND_DIALECTS).map((lang) => (
-                    <option key={lang} value={lang}>
-                      {lang}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Your Dialect / Accent Group</label>
-                <div className="dialect-grid">
-                  {((LANGUAGES_AND_DIALECTS as any)[language] || []).map((dial: string) => (
-                    <div
-                      key={dial}
-                      className={`dialect-card ${dialect === dial ? "selected" : ""}`}
-                      onClick={() => setDialect(dial)}
-                    >
-                      {dial}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <button type="submit" className="btn btn-primary" style={{ marginTop: "12px" }}>
-                Begin Structured Play <ArrowRight size={16} />
+            {/* Tabs Selector */}
+            <div style={{ display: "flex", borderBottom: "1px solid var(--border-subtle)", marginBottom: "16px" }}>
+              <button 
+                onClick={() => { setAuthTab("login"); setErrorMsg(""); }} 
+                style={{
+                  flex: 1,
+                  padding: "10px",
+                  background: "none",
+                  border: "none",
+                  color: authTab === "login" ? "var(--text-primary)" : "var(--text-muted)",
+                  borderBottom: authTab === "login" ? "2px solid var(--primary)" : "none",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                  fontSize: "14px"
+                }}
+              >
+                Sign In
               </button>
-            </form>
+              <button 
+                onClick={() => { setAuthTab("signup"); setErrorMsg(""); }} 
+                style={{
+                  flex: 1,
+                  padding: "10px",
+                  background: "none",
+                  border: "none",
+                  color: authTab === "signup" ? "var(--text-primary)" : "var(--text-muted)",
+                  borderBottom: authTab === "signup" ? "2px solid var(--primary)" : "none",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                  fontSize: "14px"
+                }}
+              >
+                Sign Up
+              </button>
+            </div>
 
-            <div className="glass-card" style={{ marginTop: "10px", padding: "14px", border: "1px solid var(--border-subtle)", background: "rgba(255,255,255,0.01)" }}>
-              <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
-                <ShieldCheck size={16} color="var(--text-secondary)" style={{ flexShrink: 0, marginTop: "2px" }} />
+            {/* Forms Panel */}
+            <div className="glass-card" style={{ padding: "20px" }}>
+              <form onSubmit={handleAuth} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                
+                {errorMsg && (
+                  <div className="alert alert-error" style={{ display: "flex", gap: "8px", fontSize: "12px" }}>
+                    <AlertTriangle size={14} />
+                    <span>{errorMsg}</span>
+                  </div>
+                )}
+
+                {successMsg && (
+                  <div className="alert alert-success" style={{ display: "flex", gap: "8px", fontSize: "12px" }}>
+                    <CheckCircle size={14} />
+                    <span>{successMsg}</span>
+                  </div>
+                )}
+
                 <div>
-                  <h4 style={{ fontSize: "13px", color: "var(--primary)" }}>Privacy & Dataset Integrity</h4>
-                  <p style={{ fontSize: "11px", color: "var(--text-secondary)", marginTop: "4px" }}>
-                    Your recordings compile into open-source dataset structures to build dialect-aware AI models. No personal identifiers are shared.
-                  </p>
+                  <label style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "var(--text-secondary)", marginBottom: "4px" }}>
+                    Username / Contributor Nickname
+                  </label>
+                  <input
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value.trim())}
+                    placeholder="e.g. Chinedu"
+                    className="form-input"
+                    required
+                  />
                 </div>
-              </div>
+
+                <div>
+                  <label style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "var(--text-secondary)", marginBottom: "4px" }}>
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    value={authTab === "login" ? loginPassword : signupPassword}
+                    onChange={(e) => authTab === "login" ? setLoginPassword(e.target.value) : setSignupPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="form-input"
+                    required
+                  />
+                </div>
+
+                {authTab === "signup" && (
+                  <>
+                    <div>
+                      <label style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "var(--text-secondary)", marginBottom: "4px" }}>
+                        Native Tribe (Primary Language)
+                      </label>
+                      <select
+                        value={language}
+                        onChange={(e) => setLanguage(e.target.value)}
+                        className="form-input"
+                      >
+                        {Object.keys(LANGUAGES_AND_DIALECTS).map((lang) => (
+                          <option key={lang} value={lang}>{lang}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "var(--text-secondary)", marginBottom: "4px" }}>
+                        Primary Dialect (Optional - Can leave empty)
+                      </label>
+                      <select
+                        value={dialect}
+                        onChange={(e) => setDialect(e.target.value)}
+                        className="form-input"
+                      >
+                        <option value="">Choose Dialect (Or skip)</option>
+                        {((LANGUAGES_AND_DIALECTS as any)[language] || []).map((dial: string) => (
+                          <option key={dial} value={dial}>{dial}</option>
+                        ))}
+                      </select>
+                      <span style={{ fontSize: "10px", color: "var(--text-muted)" }}>
+                        Leave empty if you speak multiple dialects. You can choose during gameplay.
+                      </span>
+                    </div>
+                  </>
+                )}
+
+                <button type="submit" className="btn btn-primary" style={{ marginTop: "10px" }}>
+                  {authTab === "login" ? "Sign In to Play" : "Register Profile"}
+                </button>
+              </form>
             </div>
           </div>
         )}
 
-        {/* SCREEN 2: SOLO GAMEPLAY */}
-        {currentScreen === "solo" && (
+        {/* SCREEN 2: SOLO PLAY MODE */}
+        {isRegistered && currentScreen === "solo" && (
           <div className="slide-up" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
                 <h2 style={{ fontSize: "20px" }}>Solo Mode</h2>
-                <p style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
-                  Speaking: <strong>{dialect} {language}</strong>{" "}
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "2px" }}>
+                  <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
+                    Active Dialect:
+                  </span>
+                  <select 
+                    value={activeDialect} 
+                    onChange={(e) => setActiveDialect(e.target.value)}
+                    className="form-input"
+                    style={{ padding: "2px 8px", fontSize: "11px", width: "auto", display: "inline-block" }}
+                  >
+                    {((LANGUAGES_AND_DIALECTS as any)[language] || []).map((d: string) => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
                   <span 
                     onClick={() => {
                       setIsRegistered(false);
@@ -576,16 +801,16 @@ export default function App() {
                       color: "var(--text-primary)", 
                       textDecoration: "underline", 
                       cursor: "pointer", 
-                      marginLeft: "6px",
                       fontSize: "11px",
-                      fontWeight: "500"
+                      fontWeight: "500",
+                      marginLeft: "4px"
                     }}
-                    title="Change language or dialect"
                   >
-                    Change
+                    Change Language
                   </span>
-                </p>
+                </div>
               </div>
+
               <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                 <button className="btn-skip" onClick={prevStimulus} style={{ padding: "4px 8px" }}>
                   Prev
@@ -612,776 +837,713 @@ export default function App() {
             {/* Stimulus display card */}
             <div className="glass-card stimulus-display" style={{ overflow: "hidden", padding: "0" }}>
               <div className="image-container">
-                {imageErrors[STIMULI[activeStimulusIndex].id] ? (
+                {imageErrors[activeStimulus.id] ? (
                   <div className="image-placeholder-fallback">
                     <Globe size={32} color="var(--text-muted)" />
                     <span style={{ fontSize: "11px", color: "var(--text-secondary)", marginTop: "6px" }}>Image Offline</span>
                   </div>
                 ) : (
                   <img
-                    src={STIMULI[activeStimulusIndex].imageUrl}
-                    alt={STIMULI[activeStimulusIndex].title}
+                    src={activeStimulus.imageUrl}
+                    alt={activeStimulus.title}
                     className="stimulus-image"
-                    onError={() => handleImageError(STIMULI[activeStimulusIndex].id)}
+                    onError={() => handleImageError(activeStimulus.id)}
                   />
                 )}
-                <span className="category-tag">{STIMULI[activeStimulusIndex].category}</span>
+                <span className="category-tag">{activeStimulus.category}</span>
               </div>
 
               <div style={{ padding: "16px" }}>
-                <h3 style={{ fontSize: "16px" }}>{STIMULI[activeStimulusIndex].title}</h3>
+                <h3 style={{ fontSize: "16px" }}>{activeStimulus.title}</h3>
                 <p style={{ color: "var(--text-secondary)", fontSize: "13px", marginTop: "4px" }}>
-                  {STIMULI[activeStimulusIndex].description}
+                  {activeStimulus.description}
                 </p>
                 <div style={{ marginTop: "12px", background: "rgba(255,255,255,0.03)", padding: "10px", borderRadius: "8px", borderLeft: "3px solid var(--primary)" }}>
-                  <p style={{ fontSize: "12px", fontWeight: "600" }}>PROMPT FOR YOU:</p>
-                  <p style={{ fontSize: "12px", color: "var(--text-secondary)" }}>{STIMULI[activeStimulusIndex].audioPrompt}</p>
+                  <p style={{ fontSize: "11px", fontWeight: "600" }}>PROMPT FOR YOU:</p>
+                  <p style={{ fontSize: "12px", color: "var(--text-secondary)" }}>{activeStimulus.audioPrompt}</p>
                 </div>
               </div>
             </div>
 
-            {/* Recording interaction board */}
-            {!validationResult ? (
-              <div className="glass-card recorder-console">
-                {isRecording ? (
-                  <>
-                    <canvas ref={canvasRef} className="waveform-canvas" width={400} height={60} />
-                    <div style={{ display: "flex", justifyContent: "space-between", width: "100%", alignItems: "center" }}>
-                      <span className="recording-status" style={{ color: "var(--danger)", display: "flex", alignItems: "center", gap: "6px" }}>
-                        <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "var(--danger)", display: "inline-block" }}></span>
-                        Recording Spontaneous Speech...
-                      </span>
-                      <span className="recording-time">
-                        {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, "0")}
-                      </span>
-                    </div>
-
-                    <button className="btn btn-danger recording-pulse" onClick={stopRecording}>
-                      <Square size={16} /> Stop Recording
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    {audioUrl ? (
-                      <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "12px" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "10px", background: "rgba(255,255,255,0.03)", padding: "10px", borderRadius: "10px" }}>
-                          <Volume2 size={16} color="var(--text-secondary)" />
-                          <audio src={audioUrl} controls style={{ width: "100%", height: "32px" }} />
-                        </div>
-                        <div style={{ display: "flex", gap: "10px" }}>
-                          <button className="btn btn-secondary" onClick={() => { setAudioUrl(null); setAudioBlob(null); }} style={{ flex: 1 }}>
-                            <RotateCcw size={14} /> Redo
-                          </button>
-                          <button className="btn btn-primary" onClick={submitDescription} style={{ flex: 2 }} disabled={isValidating}>
-                            {isValidating ? "AI Semantic Validation..." : "Submit to Pipeline"}
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <p style={{ textAlign: "center", fontSize: "13px", color: "var(--text-secondary)" }}>
-                          Speak naturally in your dialect. Descriptions must be spontaneous and describe details of the image.
-                        </p>
-                        <button className="btn btn-primary" onClick={startRecording}>
-                          <Mic size={16} /> Tap to Record Description
-                        </button>
-                      </>
-                    )}
-                  </>
-                )}
+            {/* Solo Progress Tracker */}
+            <div className="glass-card" style={{ padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <Award size={16} color="var(--primary)" />
+                <span style={{ fontSize: "13px", fontWeight: "600" }}>Solo Coin Progress: {soloProgress} / 10 verified descriptions</span>
               </div>
-            ) : (
-              /* Validation result display */
-              <div className="glass-card slide-up" style={{
-                border: `1px solid ${validationResult.accept ? "var(--success)" : "var(--danger)"}`,
-                boxShadow: "none"
-              }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                  <div>
-                    <h3 style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "15px", color: validationResult.accept ? "var(--success)" : "var(--danger)" }}>
-                      {validationResult.accept ? (
-                        <>
-                          <CheckCircle size={16} /> Description Accepted
-                        </>
+              <div style={{ width: "120px", background: "#2A2B2F", height: "6px", borderRadius: "3px", overflow: "hidden" }}>
+                <div style={{ width: `${soloProgress * 10}%`, background: "var(--primary)", height: "100%", transition: "width 0.3s ease" }}></div>
+              </div>
+            </div>
+
+            {/* Mic / Audio Panel */}
+            <div className="glass-card mic-panel" style={{ padding: "20px", textAlign: "center" }}>
+              {errorMsg && (
+                <div className="alert alert-error" style={{ marginBottom: "16px", fontSize: "12px" }}>
+                  {errorMsg}
+                </div>
+              )}
+
+              {!audioUrl && !isRecording && (
+                <div>
+                  <p style={{ color: "var(--text-secondary)", fontSize: "13px", marginBottom: "16px" }}>
+                    Speak naturally in your dialect. Descriptions must be spontaneous and describe details of the image.
+                  </p>
+                  <button className="btn btn-primary btn-record" onClick={startRecording}>
+                    <Mic size={15} />
+                    <span>Tap to Record Description</span>
+                  </button>
+                </div>
+              )}
+
+              {isRecording && (
+                <div>
+                  <div className="recording-pulse"></div>
+                  <p style={{ color: "var(--text-secondary)", fontSize: "13px", margin: "12px 0" }}>
+                    Recording audio description... ({recordingTime}s)
+                  </p>
+                  
+                  {/* Frequency Waveform Canvas */}
+                  <canvas ref={canvasRef} className="waveform-canvas" width="300" height="50"></canvas>
+
+                  <button className="btn btn-error" onClick={stopRecording}>
+                    <Square size={14} />
+                    <span>Stop Recording</span>
+                  </button>
+                </div>
+              )}
+
+              {audioUrl && !isRecording && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                  <div style={{ display: "flex", justifyContent: "center", gap: "10px", alignItems: "center" }}>
+                    <audio src={audioUrl} controls style={{ borderRadius: "8px" }} />
+                    <button className="btn-skip" onClick={() => { setAudioUrl(null); setAudioBlob(null); }} style={{ padding: "10px" }} title="Discard recording">
+                      <RotateCcw size={14} />
+                    </button>
+                  </div>
+
+                  <div style={{ display: "flex", justifyContent: "center", gap: "10px" }}>
+                    <button className="btn btn-primary" onClick={submitSoloValidation} disabled={isValidating}>
+                      {isValidating ? (
+                        <span>Validating Spontaneous Dialect...</span>
                       ) : (
                         <>
-                          <AlertTriangle size={16} /> Needs Improvement
+                          <ShieldCheck size={15} />
+                          <span>Submit to Validation AI</span>
                         </>
                       )}
-                    </h3>
-                    <p style={{ fontSize: "11px", color: "var(--text-secondary)", marginTop: "4px" }}>
-                      Confidence Metric: <strong>{validationResult.confidence}%</strong> | Dialect Match: <strong>{validationResult.language_detected}</strong>
-                    </p>
+                    </button>
                   </div>
-                  {validationResult.points_earned > 0 && (
-                    <div style={{
-                      backgroundColor: "rgba(255, 255, 255, 0.05)",
-                      border: "1px solid var(--border-subtle)",
-                      color: "var(--primary)",
-                      padding: "4px 10px",
-                      borderRadius: "4px",
-                      fontSize: "11px",
-                      fontWeight: "600"
-                    }}>
-                      +{validationResult.points_earned} Pts
-                    </div>
-                  )}
                 </div>
+              )}
 
-                <div style={{ margin: "14px 0", padding: "10px", background: "rgba(255,255,255,0.02)", borderRadius: "8px", fontSize: "13px" }}>
-                  <p style={{ fontStyle: "italic", color: "var(--text-primary)" }}>
-                    "{STIMULI[activeStimulusIndex].dialectsData[dialect]?.audioMockText || "Audible local description matches stimulus content."}"
-                  </p>
+              {validationResult && (
+                <div className="validation-result slide-up" style={{
+                  marginTop: "20px",
+                  padding: "16px",
+                  borderRadius: "8px",
+                  background: validationResult.accept ? "rgba(16, 185, 129, 0.05)" : "rgba(239, 68, 68, 0.05)",
+                  border: `1px solid ${validationResult.accept ? "rgba(16, 185, 129, 0.2)" : "rgba(239, 68, 68, 0.2)"}`
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                    <span style={{ fontWeight: "700", fontSize: "14px", color: validationResult.accept ? "var(--success)" : "var(--error)" }}>
+                      {validationResult.accept ? "Verification Confirmed (+1 Progress)" : "Requires Revision"}
+                    </span>
+                    <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
+                      AI Match Confidence: {validationResult.confidence}%
+                    </span>
+                  </div>
+
+                  <div style={{ textAlign: "left", fontSize: "13px", display: "flex", flexDirection: "column", gap: "8px" }}>
+                    <p>
+                      <strong>Transcribed Speech:</strong> <span style={{ color: "var(--text-primary)", fontStyle: "italic" }}>"{validationResult.transcription}"</span>
+                    </p>
+                    <p style={{ color: "var(--text-secondary)" }}>
+                      <strong>Assessment Detail:</strong> {validationResult.feedback_message}
+                    </p>
+                    {validationResult.points_earned > 0 && (
+                      <div className="alert alert-success" style={{ display: "flex", gap: "8px", fontSize: "13px", marginTop: "6px" }}>
+                        <Coins size={14} color="var(--primary)" />
+                        <span><strong>Congratulations!</strong> You completed 10 verified solo submissions and earned 1 Coin!</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-
-                <p style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
-                  {validationResult.feedback_message}
-                </p>
-
-                <div style={{ display: "flex", gap: "10px", marginTop: "16px" }}>
-                  <button className="btn btn-secondary" onClick={() => setValidationResult(null)} style={{ flex: 1 }}>
-                    Try Again
-                  </button>
-                  <button className="btn btn-primary" onClick={nextStimulus} style={{ flex: 2 }}>
-                    Next Card <ChevronRight size={14} />
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Solo Stats */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px", marginTop: "10px" }}>
-              <div className="glass-card" style={{ padding: "12px", textAlign: "center" }}>
-                <span style={{ fontSize: "10px", textTransform: "uppercase", color: "var(--text-muted)", display: "block" }}>Contributed</span>
-                <span style={{ fontSize: "16px", fontWeight: "700", fontFamily: "var(--font-title)" }}>4 Cards</span>
-              </div>
-              <div className="glass-card" style={{ padding: "12px", textAlign: "center" }}>
-                <span style={{ fontSize: "10px", textTransform: "uppercase", color: "var(--text-muted)", display: "block" }}>Accuracy</span>
-                <span style={{ fontSize: "16px", fontWeight: "700", fontFamily: "var(--font-title)", color: "var(--primary)" }}>92%</span>
-              </div>
-              <div className="glass-card" style={{ padding: "12px", textAlign: "center" }}>
-                <span style={{ fontSize: "10px", textTransform: "uppercase", color: "var(--text-muted)", display: "block" }}>Daily Streak</span>
-                <span style={{ fontSize: "16px", fontWeight: "700", fontFamily: "var(--font-title)", color: "var(--accent)" }}>3 Days</span>
-              </div>
+              )}
             </div>
           </div>
         )}
 
-        {/* SCREEN 3: MULTIPLAYER ARENA */}
-        {currentScreen === "multiplayer" && (
+        {/* SCREEN 3: MULTIPLAYER INTERACTIVE ARENA */}
+        {isRegistered && currentScreen === "multiplayer" && (
           <div className="slide-up" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
                 <h2 style={{ fontSize: "20px" }}>Multiplayer Arena</h2>
-                <p style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
-                  Cross-dialect verification play
+                <p style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "2px" }}>
+                  Linguistic consensus validation restricted to: <strong>{language} tribe</strong>.
                 </p>
               </div>
-              <div className="user-status-badge">
-                <Users size={12} color="var(--text-secondary)" />
-                <span>4 Active</span>
-              </div>
-            </div>
-
-            {/* PHASE 1: LOBBY ENTRY */}
-            {lobbyState === "lobby" && (
-              <div className="glass-card" style={{ display: "flex", flexDirection: "column", gap: "16px", padding: "24px", textAlign: "center" }}>
-                <Users size={32} color="var(--text-secondary)" style={{ margin: "0 auto" }} />
-                <div>
-                  <h3 style={{ fontSize: "18px" }}>Forming Peer Validation Group</h3>
-                  <p style={{ fontSize: "13px", color: "var(--text-secondary)", marginTop: "6px" }}>
-                    Connecting dialect speakers from Owerri, Nnewi, Abiriba, and Onitsha...
-                  </p>
-                </div>
-
-                <div className="peers-grid" style={{ margin: "10px 0" }}>
-                  <div className="peer-row">
-                    <div className="peer-name-group">
-                      <div className="peer-avatar">C</div>
-                      <div>
-                        <div style={{ fontWeight: "600", fontSize: "13px" }}>Chinedu</div>
-                        <span className="peer-dialect">Onitsha</span>
-                      </div>
-                    </div>
-                    <span className="peer-status ready">Connected</span>
-                  </div>
-                  <div className="peer-row">
-                    <div className="peer-name-group">
-                      <div className="peer-avatar" style={{ background: "var(--accent)" }}>O</div>
-                      <div>
-                        <div style={{ fontWeight: "600", fontSize: "13px" }}>Obinna</div>
-                        <span className="peer-dialect">Owerri</span>
-                      </div>
-                    </div>
-                    <span className="peer-status ready">Connected</span>
-                  </div>
-                  <div className="peer-row">
-                    <div className="peer-name-group">
-                      <div className="peer-avatar" style={{ background: "purple", color: "white" }}>A</div>
-                      <div>
-                        <div style={{ fontWeight: "600", fontSize: "13px" }}>Ada</div>
-                        <span className="peer-dialect">Nnewi</span>
-                      </div>
-                    </div>
-                    <span className="peer-status speaking">Searching...</span>
-                  </div>
-                </div>
-
-                <button className="btn btn-primary" onClick={startMultiplayerLobby}>
-                  Join Interactive Session
-                </button>
-              </div>
-            )}
-
-            {/* PHASE 2: SELECTING STIMULUS */}
-            {lobbyState === "selecting" && (
-              <div className="glass-card" style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-                <div style={{ textAlign: "center" }}>
-                  <span style={{ fontSize: "10px", color: "var(--accent)", fontWeight: "700", textTransform: "uppercase", letterSpacing: "1px" }}>Lobby Active</span>
-                  <h3 style={{ fontSize: "18px", marginTop: "4px" }}>You are the Selector!</h3>
-                  <p style={{ fontSize: "13px", color: "var(--text-secondary)", marginTop: "4px" }}>
-                    Select a stimulus to present to the peer group.
-                  </p>
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "10px", marginTop: "10px" }}>
-                  {STIMULI.map((stim) => (
-                    <div
-                      key={stim.id}
-                      onClick={() => selectMultiplayerStimulus(stim)}
-                      style={{
-                        borderRadius: "12px",
-                        overflow: "hidden",
-                        border: "1px solid var(--border-subtle)",
-                        cursor: "pointer",
-                        position: "relative",
-                        aspectRatio: "1/1"
-                      }}
-                    >
-                      {imageErrors[stim.id] ? (
-                        <div className="image-placeholder-fallback" style={{ height: "100%" }}>
-                          <Globe size={20} color="var(--text-muted)" />
-                          <span style={{ fontSize: "9.5px", color: "var(--text-secondary)", marginTop: "2px" }}>{stim.title}</span>
-                        </div>
-                      ) : (
-                        <img
-                          src={stim.imageUrl}
-                          alt={stim.title}
-                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                          onError={() => handleImageError(stim.id)}
-                        />
-                      )}
-                      <div style={{
-                        position: "absolute",
-                        bottom: "0",
-                        left: "0",
-                        right: "0",
-                        background: "linear-gradient(transparent, rgba(0,0,0,0.85))",
-                        padding: "8px",
-                        fontSize: "11px",
-                        fontWeight: "600"
-                      }}>
-                        {stim.title}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* PHASE 3: DESCRIBING */}
-            {lobbyState === "describing" && (
-              <div className="glass-card" style={{ display: "flex", flexDirection: "column", gap: "14px", textAlign: "center" }}>
-                <h3 style={{ fontSize: "18px" }}>Peers Describing Stimulus</h3>
-                <div className="image-container" style={{ maxHeight: "150px" }}>
-                  {imageErrors[multiplayerStimulus.id] ? (
-                    <div className="image-placeholder-fallback">
-                      <Globe size={24} color="var(--text-muted)" />
-                      <span style={{ fontSize: "10px", color: "var(--text-secondary)", marginTop: "4px" }}>{multiplayerStimulus.title}</span>
-                    </div>
-                  ) : (
-                    <img
-                      src={multiplayerStimulus.imageUrl}
-                      alt={multiplayerStimulus.title}
-                      className="stimulus-image"
-                      onError={() => handleImageError(multiplayerStimulus.id)}
-                    />
-                  )}
-                </div>
-                <p style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
-                  Peers are recording voice descriptions in their respective dialects.
-                </p>
-
-                <div className="peers-grid" style={{ margin: "10px 0" }}>
-                  <div className="peer-row">
-                    <div className="peer-name-group">
-                      <div className="peer-avatar">C</div>
-                      <div>
-                        <div style={{ fontWeight: "600", fontSize: "13px" }}>Chinedu</div>
-                        <span className="peer-dialect">Onitsha</span>
-                      </div>
-                    </div>
-                    <span className="peer-status speaking">Recording...</span>
-                  </div>
-                  <div className="peer-row">
-                    <div className="peer-name-group">
-                      <div className="peer-avatar" style={{ background: "var(--accent)" }}>O</div>
-                      <div>
-                        <div style={{ fontWeight: "600", fontSize: "13px" }}>Obinna</div>
-                        <span className="peer-dialect">Owerri</span>
-                      </div>
-                    </div>
-                    <span className="peer-status speaking">Recording...</span>
-                  </div>
-                </div>
-
-                <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "8px", padding: "10px", background: "rgba(255,255,255,0.03)", borderRadius: "10px" }}>
-                  <span style={{ fontSize: "13px", color: "var(--text-secondary)" }}>Remaining submission window:</span>
-                  <strong style={{ fontSize: "16px", color: "var(--accent)" }}>{multiplayerTimer}s</strong>
-                </div>
-              </div>
-            )}
-
-            {/* PHASE 4: VOTING */}
-            {lobbyState === "voting" && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                <div className="glass-card" style={{ textAlign: "center", padding: "14px" }}>
-                  <h3 style={{ fontSize: "16px" }}>Linguistic Peer Review</h3>
-                  <p style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "4px" }}>
-                    Vote on correctness and dialect accuracy. Disagreements refine AI reference standards.
-                  </p>
-                </div>
-
-                <div className="voting-section">
-                  {peerSubmissions.map((sub) => (
-                    <div key={sub.id} className="vote-card">
-                      <div style={{ display: "flex", justifyItems: "center", justifyContent: "space-between" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                          <div className="peer-avatar" style={{ width: "24px", height: "24px", fontSize: "10px" }}>{sub.name[0]}</div>
-                          <span style={{ fontWeight: "600", fontSize: "13px" }}>{sub.name} ({sub.dialect})</span>
-                        </div>
-                        <div style={{ display: "flex", gap: "6px", alignItems: "center", color: "var(--primary)", fontSize: "11px", background: "rgba(16,185,129,0.1)", padding: "2px 8px", borderRadius: "12px" }}>
-                          <Mic size={10} />
-                          <span>{sub.audioLen}s clip</span>
-                        </div>
-                      </div>
-
-                      <div style={{ background: "rgba(0,0,0,0.15)", padding: "10px", borderRadius: "8px", fontSize: "13px", borderLeft: "3px solid var(--accent)" }}>
-                        <p style={{ fontStyle: "italic" }}>"{sub.text}"</p>
-                      </div>
-
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "4px" }}>
-                        <span style={{ fontSize: "11px", color: "var(--text-secondary)" }}>Does this match {sub.dialect} dialect?</span>
-                        <div className="vote-buttons" style={{ width: "120px" }}>
-                          <button
-                            className={`vote-btn yes ${peerVotes[sub.id] === true ? "active-glow" : ""}`}
-                            onClick={() => handleVote(sub.id, true)}
-                            style={{
-                              backgroundColor: peerVotes[sub.id] === true ? "var(--primary)" : "rgba(16, 185, 129, 0.1)",
-                              color: peerVotes[sub.id] === true ? "#0E1017" : "var(--primary)"
-                            }}
-                          >
-                            Yes
-                          </button>
-                          <button
-                            className={`vote-btn no ${peerVotes[sub.id] === false ? "active-glow" : ""}`}
-                            onClick={() => handleVote(sub.id, false)}
-                            style={{
-                              backgroundColor: peerVotes[sub.id] === false ? "var(--danger)" : "rgba(239, 68, 68, 0.1)",
-                              color: peerVotes[sub.id] === false ? "white" : "var(--danger)"
-                            }}
-                          >
-                            No
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <button
-                  className={`btn ${hasVotedAll ? "btn-primary" : "btn-disabled"}`}
-                  disabled={!hasVotedAll}
-                  onClick={finishVoting}
-                >
-                  Submit Votes & Calculate Consensus
-                </button>
-              </div>
-            )}
-
-            {/* PHASE 5: CONSENSUS */}
-            {lobbyState === "consensus" && (
-              <div className="glass-card slide-up" style={{ display: "flex", flexDirection: "column", gap: "16px", border: "1px solid var(--border-subtle)", boxShadow: "none" }}>
-                <div style={{ textAlign: "center" }}>
-                  <Sparkles size={24} color="var(--warning)" style={{ margin: "0 auto 8px" }} />
-                  <h3 style={{ fontSize: "18px" }}>Consensus Achieved!</h3>
-                  <p style={{ fontSize: "13px", color: "var(--text-secondary)", marginTop: "4px" }}>
-                    The submissions clear the peer threshold. The reference dataset is updated!
-                  </p>
-                </div>
-
-                <div style={{ background: "rgba(255, 255, 255, 0.01)", border: "1px solid var(--border-subtle)", borderRadius: "8px", padding: "14px" }}>
-                  <h4 style={{ fontSize: "13px", color: "var(--primary)", display: "flex", alignItems: "center", gap: "6px" }}>
-                    <ShieldCheck size={14} color="var(--text-secondary)" /> Dataset Integration Log
-                  </h4>
-                  <ul style={{ fontSize: "11px", color: "var(--text-secondary)", listStyleType: "none", padding: "0", marginTop: "8px", display: "flex", flexDirection: "column", gap: "4px" }}>
-                    <li>• Igbo / Onitsha: Standardized audio reference locked (100% agreement)</li>
-                    <li>• Igbo / Owerri: Spontaneous variation labeled & saved (100% agreement)</li>
-                    <li>• Added <strong>+15 Points</strong> to wallet balance</li>
-                  </ul>
-                </div>
-
-                <button className="btn btn-primary" onClick={() => setLobbyState("lobby")}>
-                  Play Next Session
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* SCREEN 4: WALLET & CASH OUT */}
-        {currentScreen === "wallet" && (
-          <div className="slide-up" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            <h2 style={{ fontSize: "20px" }}>Redeem Rewards</h2>
-
-            {/* Wallet Balance Card */}
-            <div className="glass-card wallet-card">
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                <div>
-                  <span className="wallet-subtext">EARNED REWARD POINT BALANCE</span>
-                  <div className="wallet-balance">{points} Pts</div>
-                  <span className="wallet-subtext" style={{ color: "var(--text-secondary)" }}>
-                    Value equivalent: <strong>₦{(points * 10).toLocaleString()} NGN</strong>
-                  </span>
-                </div>
-                <Coins size={28} color="var(--text-secondary)" />
-              </div>
-            </div>
-
-            {/* Redeem Options Form */}
-            <div className="glass-card">
-              <h3 style={{ fontSize: "16px", marginBottom: "12px" }}>Instant Mobile Airtime Cashout</h3>
               
-              {showRedeemSuccess ? (
-                <div style={{ textAlign: "center", padding: "20px", display: "flex", flexDirection: "column", gap: "10px" }}>
-                  <div style={{
-                    width: "40px",
-                    height: "40px",
-                    borderRadius: "50%",
-                    backgroundColor: "rgba(255, 255, 255, 0.03)",
-                    border: "1px solid var(--border-subtle)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    margin: "0 auto"
-                  }}>
-                    <CheckCircle size={20} color="var(--success)" />
-                  </div>
-                  <h4 style={{ color: "var(--primary)" }}>Top-up Request Successful!</h4>
-                  <p style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
-                    Airtime has been queued to your carrier for phone {airtimePhone}. Received within 5 minutes.
-                  </p>
-                </div>
-              ) : (
-                <form onSubmit={handleRedeem} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-                  <div className="form-group">
-                    <label className="form-label">Telecom Carrier</label>
-                    <select
-                      className="select-input"
-                      value={airtimeCarrier}
-                      onChange={(e) => setAirtimeCarrier(e.target.value)}
-                    >
-                      <option value="MTN">MTN Nigeria</option>
-                      <option value="Airtel">Airtel Nigeria</option>
-                      <option value="Glo">Globacom (Glo)</option>
-                      <option value="9mobile">9mobile</option>
-                    </select>
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Phone Number</label>
-                    <input
-                      type="tel"
-                      className="text-input"
-                      placeholder="e.g. 08031234567"
-                      value={airtimePhone}
-                      onChange={(e) => setAirtimePhone(e.target.value)}
-                      required
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Redeem Point Amount</label>
-                    <div style={{ display: "flex", gap: "10px" }}>
-                      {[50, 100, 200].map((amt) => (
-                        <div
-                          key={amt}
-                          onClick={() => setRedeemAmount(amt)}
-                          style={{
-                            flex: 1,
-                            background: redeemAmount === amt ? "rgba(245, 158, 11, 0.15)" : "rgba(255,255,255,0.03)",
-                            border: `1px solid ${redeemAmount === amt ? "var(--accent)" : "var(--border-subtle)"}`,
-                            padding: "10px",
-                            borderRadius: "10px",
-                            textAlign: "center",
-                            cursor: "pointer",
-                            fontSize: "12px",
-                            fontWeight: "700",
-                            color: redeemAmount === amt ? "var(--accent)" : "var(--text-primary)"
-                          }}
-                        >
-                          {amt} Pts (₦{amt * 10})
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <button
-                    type="submit"
-                    className={`btn ${points >= redeemAmount ? "btn-accent" : "btn-disabled"}`}
-                    disabled={points < redeemAmount || !airtimePhone}
-                    style={{ marginTop: "6px" }}
-                  >
-                    <Wallet size={16} /> Redeem Airtime Now
-                  </button>
-                </form>
+              {roomCode && (
+                <button className="btn-skip" onClick={leaveMultiplayerRoom} style={{ color: "var(--error)" }}>
+                  Leave Lobby
+                </button>
               )}
             </div>
 
-            {/* Transaction Logs */}
-            <div className="glass-card">
-              <h3 style={{ fontSize: "14px", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "12px" }}>
-                Transaction History
-              </h3>
-              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                {transactions.map((tx) => (
-                  <div key={tx.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: "10px", borderBottom: "1px solid var(--border-subtle)" }}>
-                    <div>
-                      <div style={{ fontSize: "13px", fontWeight: "600" }}>{tx.detail}</div>
-                      <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{tx.date}</span>
-                    </div>
-                    <span style={{
-                      fontWeight: "700",
-                      fontSize: "14px",
-                      color: tx.points > 0 ? "var(--primary)" : "var(--danger)"
-                    }}>
-                      {tx.points > 0 ? `+${tx.points}` : tx.points}
-                    </span>
+            {/* Setup / Join Room screen */}
+            {!roomCode && (
+              <div className="glass-card" style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
+                {lobbyError && (
+                  <div className="alert alert-error" style={{ fontSize: "12px" }}>
+                    {lobbyError}
                   </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
+                )}
 
-        {/* SCREEN 5: TRANSLATION BRIDGE */}
-        {currentScreen === "bridge" && (
-          <div className="slide-up" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            <div>
-              <h2 style={{ fontSize: "20px" }}>Cross-Dialect Bridge</h2>
-              <p style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
-                Linguistic translation preview model powered by collected data.
-              </p>
-            </div>
-
-            <div className="glass-card" style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-              <div className="form-group">
-                <label className="form-label">Source Dialect</label>
-                <select className="select-input" value={bridgeSource} onChange={(e) => setBridgeSource(e.target.value)}>
-                  {LANGUAGES_AND_DIALECTS["Igbo"].map((d) => (
-                    <option key={d} value={d}>{d}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Target Dialect</label>
-                <select className="select-input" value={bridgeTarget} onChange={(e) => setBridgeTarget(e.target.value)}>
-                  {LANGUAGES_AND_DIALECTS["Igbo"].map((d) => (
-                    <option key={d} value={d}>{d}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Select Sample Recorded Prompt</label>
-                <div style={{ display: "flex", gap: "10px" }}>
-                  {BRIDGE_PHRASES.map((_, i) => (
-                    <div
-                      key={i}
-                      onClick={() => setBridgePhraseIndex(i)}
-                      style={{
-                        flex: 1,
-                        background: bridgePhraseIndex === i ? "rgba(16, 185, 129, 0.15)" : "rgba(255,255,255,0.03)",
-                        border: `1px solid ${bridgePhraseIndex === i ? "var(--primary)" : "var(--border-subtle)"}`,
-                        padding: "10px",
-                        borderRadius: "10px",
-                        textAlign: "center",
-                        cursor: "pointer",
-                        fontSize: "12px",
-                        fontWeight: "600",
-                        color: bridgePhraseIndex === i ? "var(--primary)" : "var(--text-primary)"
-                      }}
-                    >
-                      Phrase {i + 1}
-                    </div>
-                  ))}
-                </div>
-                <div style={{ background: "rgba(255,255,255,0.02)", padding: "10px", borderRadius: "8px", fontSize: "11px", color: "var(--text-secondary)", marginTop: "4px" }}>
-                  Concept: <strong>"{BRIDGE_PHRASES[bridgePhraseIndex].concept}"</strong>
-                </div>
-              </div>
-
-              {/* Translation Display */}
-              <div className="bridge-box">
-                <span style={{ fontSize: "10px", textTransform: "uppercase", color: "var(--text-muted)" }}>{bridgeSource} Pronunciation</span>
-                <p style={{ fontWeight: "700", color: "var(--accent)" }}>
-                  "{(BRIDGE_PHRASES[bridgePhraseIndex].translations as any)[bridgeSource]?.text || BRIDGE_PHRASES[bridgePhraseIndex].standard}"
-                </p>
-              </div>
-
-              <div className="bridge-arrow">
-                <RotateCcw style={{ transform: "rotate(90deg)" }} size={20} />
-              </div>
-
-              <div className="bridge-box">
-                <span style={{ fontSize: "10px", textTransform: "uppercase", color: "var(--text-muted)" }}>{bridgeTarget} Equivalent</span>
-                <p style={{ fontWeight: "700", color: "var(--primary)" }}>
-                  "{(BRIDGE_PHRASES[bridgePhraseIndex].translations as any)[bridgeTarget]?.text || BRIDGE_PHRASES[bridgePhraseIndex].standard}"
-                </p>
-              </div>
-
-              <div style={{ display: "flex", gap: "10px", alignItems: "flex-start", padding: "10px", background: "rgba(255,255,255,0.03)", borderRadius: "10px" }}>
-                <Info size={14} color="var(--text-secondary)" style={{ flexShrink: 0, marginTop: "2px" }} />
-                <div>
-                  <h4 style={{ fontSize: "12px" }}>Dialect Bridge Insight</h4>
-                  <p style={{ fontSize: "10px", color: "var(--text-secondary)", marginTop: "2px" }}>
-                    How Lexara bridges the gap: High-fidelity parallel speech corpora collected during validation sessions allows the ML models to construct exact dialect shift dictionaries mapping localized words (e.g. *awiko* vs *kọpụ*).
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  <h3 style={{ fontSize: "15px" }}>Create a Live Room</h3>
+                  <p style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
+                    Host a game. Mismatched speakers are blocked. All players must belong to the {language} tribe to join.
                   </p>
+                  <button className="btn btn-primary" onClick={createMultiplayerLobby} style={{ alignSelf: "flex-start" }}>
+                    <Plus size={15} />
+                    <span>Host New Room</span>
+                  </button>
+                </div>
+
+                <hr style={{ border: "none", borderTop: "1px solid var(--border-subtle)" }} />
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  <h3 style={{ fontSize: "15px" }}>Join Room via Code</h3>
+                  <p style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
+                    Enter a 4-digit code provided by another player.
+                  </p>
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <input
+                      type="text"
+                      placeholder="e.g. 5829"
+                      value={roomCode}
+                      onChange={(e) => setRoomCode(e.target.value.trim())}
+                      className="form-input"
+                      maxLength={4}
+                      style={{ width: "120px" }}
+                    />
+                    <button className="btn btn-primary" onClick={joinMultiplayerLobby}>
+                      <span>Join Room</span>
+                    </button>
+                  </div>
                 </div>
               </div>
+            )}
+
+            {/* Live Lobby Screen */}
+            {roomCode && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                
+                {/* Lobby stats / Code bar */}
+                <div className="glass-card" style={{ padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <span style={{ fontSize: "11px", color: "var(--primary)", fontWeight: "700" }}>ROOM CODE</span>
+                    <h3 style={{ fontSize: "20px", fontWeight: "800", letterSpacing: "1px" }}>{roomCode}</h3>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: "11px", color: "var(--text-secondary)", display: "block", textAlign: "right" }}>COIN PROGRESS</span>
+                    <span style={{ fontSize: "13px", fontWeight: "700" }}>Consensus: {roomConsensusProgress} / 3 matches</span>
+                  </div>
+                </div>
+
+                {multiplayerNotify && (
+                  <div className="alert alert-success" style={{ display: "flex", gap: "8px", fontSize: "13px" }}>
+                    <Coins size={14} color="var(--primary)" />
+                    <span>{multiplayerNotify}</span>
+                  </div>
+                )}
+
+                {/* PHASE 1: HOST CHOOSE CARD */}
+                {lobbyState === "lobby" && (
+                  <div className="glass-card" style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                    {username === hostUsername ? (
+                      <div>
+                        <h3 style={{ fontSize: "15px", marginBottom: "8px" }}>You are the Lobby Host! Select a card to present:</h3>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "10px" }}>
+                          {STIMULI.map((stim) => (
+                            <div
+                              key={stim.id}
+                              onClick={() => selectMultiplayerStimulus(stim)}
+                              style={{
+                                borderRadius: "8px",
+                                overflow: "hidden",
+                                border: "1px solid var(--border-subtle)",
+                                cursor: "pointer",
+                                position: "relative",
+                                aspectRatio: "1.6/1"
+                              }}
+                            >
+                              <img src={stim.imageUrl} alt={stim.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                              <div style={{
+                                position: "absolute",
+                                bottom: "0",
+                                left: "0",
+                                right: "0",
+                                background: "linear-gradient(transparent, rgba(0,0,0,0.85))",
+                                padding: "6px 8px",
+                                fontSize: "11px",
+                                fontWeight: "600"
+                              }}>
+                                {stim.title}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ textAlign: "center", padding: "20px 0" }}>
+                        <div className="recording-pulse"></div>
+                        <h3 style={{ fontSize: "15px", marginTop: "8px" }}>Waiting for Host ({hostUsername}) to select card...</h3>
+                        <p style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "4px" }}>
+                          Connected players: {connectedPlayers.map(p => `${p.username} (${p.dialect || "general"})`).join(", ")}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* PHASE 2: SPEAKERS DESCRIBING */}
+                {lobbyState === "describing" && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                    
+                    {/* Visual Card */}
+                    <div className="glass-card stimulus-display" style={{ overflow: "hidden", padding: "0" }}>
+                      <div className="image-container" style={{ maxHeight: "160px" }}>
+                        <img src={activeWsStimulus.imageUrl} alt={activeWsStimulus.title} className="stimulus-image" />
+                      </div>
+                      <div style={{ padding: "12px" }}>
+                        <h3 style={{ fontSize: "14px" }}>{activeWsStimulus.title}</h3>
+                        <p style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "2px" }}>{activeWsStimulus.audioPrompt}</p>
+                      </div>
+                    </div>
+
+                    {/* Microphone input */}
+                    {username !== hostUsername && (
+                      <div className="glass-card" style={{ padding: "16px", textAlign: "center" }}>
+                        <h3 style={{ fontSize: "14px", marginBottom: "8px" }}>Active Dialect: {activeDialect}</h3>
+                        
+                        {!audioUrl && !isRecording && (
+                          <button className="btn btn-primary" onClick={startRecording}>
+                            <Mic size={14} />
+                            <span>Record Description</span>
+                          </button>
+                        )}
+
+                        {isRecording && (
+                          <div>
+                            <div className="recording-pulse"></div>
+                            <p style={{ fontSize: "12px", margin: "8px 0" }}>Recording audio ({recordingTime}s)...</p>
+                            <button className="btn btn-error" onClick={stopRecording}>
+                              <Square size={13} />
+                              <span>Stop Recording</span>
+                            </button>
+                          </div>
+                        )}
+
+                        {audioUrl && !isRecording && (
+                          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                            <audio src={audioUrl} controls style={{ margin: "0 auto" }} />
+                            <div style={{ display: "flex", justifyContent: "center", gap: "8px" }}>
+                              <button className="btn-skip" onClick={() => { setAudioUrl(null); setAudioBlob(null); }}>Discard</button>
+                              <button className="btn btn-primary" onClick={submitMultiplayerRecording} disabled={isValidating}>
+                                {isValidating ? "Uploading..." : "Submit & Transcribe"}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Active Submissions List */}
+                    <div className="glass-card" style={{ padding: "16px" }}>
+                      <h3 style={{ fontSize: "13px", fontWeight: "600", marginBottom: "10px" }}>Live Submission Stream:</h3>
+                      {wsSubmissions.length === 0 ? (
+                        <p style={{ fontSize: "12px", color: "var(--text-secondary)" }}>No descriptions submitted yet.</p>
+                      ) : (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                          {wsSubmissions.map((sub, idx) => (
+                            <div key={idx} style={{ padding: "8px 12px", background: "#16171A", borderRadius: "6px", border: "1px solid var(--border-subtle)" }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "var(--text-secondary)", marginBottom: "4px" }}>
+                                <strong>{sub.username} ({sub.dialect || "general"})</strong>
+                                <span>Voice file uploaded</span>
+                              </div>
+                              <span style={{ fontSize: "13px", fontStyle: "italic" }}>"{sub.text}"</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {username === hostUsername && wsSubmissions.length > 0 && (
+                        <button className="btn btn-primary" onClick={transitionToVoting} style={{ marginTop: "14px", width: "100%" }}>
+                          Close Submissions & Open Consensus Voting
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* PHASE 3: VOTING & CONSENSUS EDITS */}
+                {lobbyState === "voting" && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                    
+                    <div className="glass-card" style={{ padding: "16px" }}>
+                      <h3 style={{ fontSize: "14px", fontWeight: "700", marginBottom: "10px" }}>Consensus Review & Orthography Corrections</h3>
+                      
+                      <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                        {wsSubmissions.map((sub, idx) => {
+                          const playerVotes = wsVotes[sub.username] || {};
+                          const yesVotes = Object.values(playerVotes).filter(v => v === true).length;
+                          const totalVotes = Object.keys(playerVotes).length;
+                          
+                          // Determine if this user already voted
+                          const myVote = playerVotes[username];
+
+                          return (
+                            <div key={idx} style={{ padding: "12px", background: "#16171A", borderRadius: "8px", border: "1px solid var(--border-subtle)" }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                                <span style={{ fontSize: "12px", fontWeight: "700" }}>{sub.username} ({sub.dialect || "general"})</span>
+                                <span style={{ fontSize: "11px", color: "var(--text-secondary)" }}>
+                                  Agreement: {yesVotes} / {totalVotes || 0} votes
+                                </span>
+                              </div>
+
+                              <p style={{ fontSize: "13px", fontStyle: "italic", marginBottom: "8px" }}>
+                                Original: "{sub.text}"
+                              </p>
+
+                              {/* Suggest spelling / orthography correction input */}
+                              {username !== sub.username && (
+                                <div style={{ display: "flex", gap: "8px", marginBottom: "10px" }}>
+                                  <input
+                                    type="text"
+                                    placeholder="Suggest orthography correction..."
+                                    defaultValue={wsCorrections[sub.username] || ""}
+                                    onBlur={(e) => submitSpellingCorrection(sub.username, e.target.value)}
+                                    className="form-input"
+                                    style={{ fontSize: "11px", padding: "4px 8px" }}
+                                  />
+                                </div>
+                              )}
+
+                              {wsCorrections[sub.username] && (
+                                <p style={{ fontSize: "12px", color: "var(--primary)", marginBottom: "10px" }}>
+                                  <strong>Consensus Suggestion:</strong> "{wsCorrections[sub.username]}"
+                                </p>
+                              )}
+
+                              {/* Vote buttons */}
+                              {username !== sub.username && (
+                                <div style={{ display: "flex", gap: "6px" }}>
+                                  <button
+                                    onClick={() => castVote(sub.username, true)}
+                                    className="btn-skip"
+                                    style={{
+                                      background: myVote === true ? "var(--success)" : "none",
+                                      color: myVote === true ? "black" : "var(--text-secondary)",
+                                      padding: "3px 10px",
+                                      fontSize: "11px"
+                                    }}
+                                  >
+                                    Accurate
+                                  </button>
+                                  <button
+                                    onClick={() => castVote(sub.username, false)}
+                                    className="btn-skip"
+                                    style={{
+                                      background: myVote === false ? "var(--error)" : "none",
+                                      color: myVote === false ? "white" : "var(--text-secondary)",
+                                      padding: "3px 10px",
+                                      fontSize: "11px"
+                                    }}
+                                  >
+                                    Incorrect Dialect
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Host Commit consensus buttons */}
+                      {username === hostUsername && (
+                        <div style={{ marginTop: "16px" }}>
+                          <h4 style={{ fontSize: "12px", fontWeight: "600", marginBottom: "6px" }}>Host Actions: Finalize Approved Outputs</h4>
+                          <button
+                            onClick={() => {
+                              // Compile final descriptions map (approve all by default, override with corrections)
+                              const finalSubmissionsMap: any = {};
+                              wsSubmissions.forEach(sub => {
+                                finalSubmissionsMap[sub.username] = {
+                                  approved: true,
+                                  text: wsCorrections[sub.username] || sub.text
+                                };
+                              });
+                              commitLobbyConsensus(finalSubmissionsMap);
+                            }}
+                            className="btn btn-primary"
+                            style={{ width: "100%" }}
+                          >
+                            Save Corrected Outputs & Next Card
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* SCREEN 4: PLATFORM OWNER ADMIN DASHBOARD */}
+        {isRegistered && currentScreen === "admin" && (
+          <div className="slide-up" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <h2 style={{ fontSize: "20px" }}>Dataset Quality Dashboard</h2>
+                <p style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "2px" }}>
+                  Platform Owner Auditing Interface: play audio files and verify ASR transcriptions.
+                </p>
+              </div>
+              <button className="btn-skip" onClick={() => fetchAdminSubmissions()}>Refresh</button>
+            </div>
+
+            {/* Filter selectors */}
+            <div style={{ display: "flex", gap: "8px" }}>
+              <button onClick={() => setAdminFilter("all")} className={`btn-skip ${adminFilter === "all" ? "active" : ""}`} style={{ background: adminFilter === "all" ? "#3A3B40" : "none" }}>All Submissions</button>
+              <button onClick={() => setAdminFilter("pending")} className={`btn-skip ${adminFilter === "pending" ? "active" : ""}`} style={{ background: adminFilter === "pending" ? "#3A3B40" : "none" }}>Pending Audit</button>
+              <button onClick={() => setAdminFilter("approved")} className={`btn-skip ${adminFilter === "approved" ? "active" : ""}`} style={{ background: adminFilter === "approved" ? "#3A3B40" : "none" }}>Approved</button>
+            </div>
+
+            {/* Submissions auditing list */}
+            <div className="glass-card" style={{ padding: "0", overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
+                <thead>
+                  <tr style={{ background: "#16171A", borderBottom: "1px solid var(--border-subtle)" }}>
+                    <th style={{ padding: "10px", textAlign: "left" }}>ID</th>
+                    <th style={{ padding: "10px", textAlign: "left" }}>Contributor</th>
+                    <th style={{ padding: "10px", textAlign: "left" }}>Tribe/Dialect</th>
+                    <th style={{ padding: "10px", textAlign: "left" }}>Stimulus</th>
+                    <th style={{ padding: "10px", textAlign: "left" }}>Raw Voice / Audio Playback</th>
+                    <th style={{ padding: "10px", textAlign: "left" }}>ASR Transcription Text</th>
+                    <th style={{ padding: "10px", textAlign: "center" }}>Audit Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {adminSubmissions
+                    .filter(sub => adminFilter === "all" ? true : sub.status === adminFilter)
+                    .map((sub) => (
+                      <tr key={sub.id} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                        <td style={{ padding: "10px" }}>{sub.id}</td>
+                        <td style={{ padding: "10px" }}>{sub.username}</td>
+                        <td style={{ padding: "10px" }}>{sub.language} ({sub.dialect || "general"})</td>
+                        <td style={{ padding: "10px" }}>{sub.image_id}</td>
+                        <td style={{ padding: "10px" }}>
+                          {/* RAW SPEECH AUDIO FILE PLAYBACK */}
+                          <audio src={`${API_BASE}${sub.audio_path}`} controls style={{ height: "28px", width: "160px" }} />
+                        </td>
+                        <td style={{ padding: "10px" }}>
+                          <input
+                            type="text"
+                            value={editingTexts[sub.id] !== undefined ? editingTexts[sub.id] : (sub.consensus_text || sub.transcription)}
+                            onChange={(e) => setEditingTexts({ ...editingTexts, [sub.id]: e.target.value })}
+                            className="form-input"
+                            style={{ fontSize: "11px", padding: "4px 8px" }}
+                          />
+                        </td>
+                        <td style={{ padding: "10px", textAlign: "center" }}>
+                          <div style={{ display: "flex", gap: "4px", justifyContent: "center" }}>
+                            <button
+                              onClick={() => verifySubmission(sub.id, "approved", editingTexts[sub.id])}
+                              className="btn-skip"
+                              style={{ background: sub.status === "approved" ? "var(--success)" : "none", color: sub.status === "approved" ? "black" : "var(--success)", border: "1px solid var(--success)", padding: "2px 6px" }}
+                            >
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => verifySubmission(sub.id, "rejected")}
+                              className="btn-skip"
+                              style={{ background: sub.status === "rejected" ? "var(--error)" : "none", color: sub.status === "rejected" ? "white" : "var(--error)", border: "1px solid var(--error)", padding: "2px 6px" }}
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
 
-        {/* SCREEN 6: LEADERBOARD */}
-        {currentScreen === "leaderboard" && (
-          <div className="slide-up" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            <div>
-              <h2 style={{ fontSize: "20px" }}>Dialect Leaderboards</h2>
-              <p style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
-                The race to preserve African languages. Which community is leading?
+        {/* SCREEN 5: WALLET REDEMPTION */}
+        {isRegistered && currentScreen === "wallet" && (
+          <div className="slide-up" style={{ maxWidth: "420px", margin: "0 auto", display: "flex", flexDirection: "column", gap: "16px" }}>
+            <h2 style={{ fontSize: "20px" }}>Wallet & Coin Redemption</h2>
+            <div className="glass-card points-card" style={{ padding: "20px", textAlign: "center", background: "linear-gradient(135deg, #1A1A1D, #000)" }}>
+              <Coins size={36} color="var(--primary)" style={{ margin: "0 auto 10px auto" }} />
+              <span style={{ fontSize: "12px", color: "var(--text-secondary)", textTransform: "uppercase" }}>Current Balance</span>
+              <h3 style={{ fontSize: "32px", fontWeight: "800", color: "white", marginTop: "4px" }}>{points} Coins</h3>
+              <p style={{ color: "var(--primary)", fontSize: "14px", fontWeight: "600", marginTop: "4px" }}>
+                Valued at: ₦{points}.00 NGN (1 Coin = ₦1.00 Naira)
               </p>
             </div>
 
-            {/* Dialects performance card */}
-            <div className="glass-card">
-              <h3 style={{ fontSize: "15px", marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
-                <TrendingUp size={14} color="var(--text-secondary)" /> Top Contributing Dialects
-              </h3>
-
-              <div className="leaderboard-list">
-                <div className="leaderboard-row">
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    <span className="leaderboard-rank rank-gold">#1</span>
-                    <div>
-                      <div style={{ fontWeight: "600", fontSize: "13px" }}>Owerri Dialect</div>
-                      <span style={{ fontSize: "10px", color: "var(--text-secondary)" }}>Igbo Language</span>
-                    </div>
-                  </div>
-                  <strong style={{ fontSize: "13px", color: "var(--primary)" }}>412.5 hrs</strong>
+            <div className="glass-card" style={{ padding: "20px" }}>
+              <h3 style={{ fontSize: "15px", marginBottom: "12px" }}>Convert Coins to Mobile Airtime</h3>
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                <div>
+                  <label style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "var(--text-secondary)", marginBottom: "4px" }}>Select Telecom Carrier</label>
+                  <select className="form-input">
+                    <option>MTN Nigeria</option>
+                    <option>Airtel Nigeria</option>
+                    <option>Glo Nigeria</option>
+                    <option>9mobile Nigeria</option>
+                  </select>
                 </div>
-
-                <div className="leaderboard-row">
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    <span className="leaderboard-rank rank-silver">#2</span>
-                    <div>
-                      <div style={{ fontWeight: "600", fontSize: "13px" }}>Abiriba Dialect</div>
-                      <span style={{ fontSize: "10px", color: "var(--text-secondary)" }}>Igbo Language</span>
-                    </div>
-                  </div>
-                  <strong style={{ fontSize: "13px", color: "var(--primary)" }}>201.2 hrs</strong>
+                <div>
+                  <label style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "var(--text-secondary)", marginBottom: "4px" }}>Phone Number</label>
+                  <input type="tel" placeholder="e.g. 08031234567" className="form-input" />
                 </div>
-
-                <div className="leaderboard-row">
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    <span className="leaderboard-rank rank-bronze">#3</span>
-                    <div>
-                      <div style={{ fontWeight: "600", fontSize: "13px" }}>Nnewi Dialect</div>
-                      <span style={{ fontSize: "10px", color: "var(--text-secondary)" }}>Igbo Language</span>
-                    </div>
-                  </div>
-                  <strong style={{ fontSize: "13px", color: "var(--primary)" }}>189.8 hrs</strong>
+                <div>
+                  <label style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "var(--text-secondary)", marginBottom: "4px" }}>Coins to Redeem</label>
+                  <input type="number" defaultValue={50} min={10} max={points} className="form-input" />
                 </div>
-
-                <div className="leaderboard-row">
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    <span className="leaderboard-rank">#4</span>
-                    <div>
-                      <div style={{ fontWeight: "600", fontSize: "13px" }}>Ijebu Dialect</div>
-                      <span style={{ fontSize: "10px", color: "var(--text-secondary)" }}>Yoruba Language</span>
-                    </div>
-                  </div>
-                  <strong style={{ fontSize: "13px", color: "var(--primary)" }}>154.6 hrs</strong>
-                </div>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => {
+                    alert(`Airtime request submitted! ₦${50} airtime will be processed shortly.`);
+                    setPoints(prev => Math.max(0, prev - 50));
+                  }}
+                  disabled={points < 50}
+                >
+                  Confirm Instant Airtime Recharge
+                </button>
               </div>
             </div>
+          </div>
+        )}
 
-            {/* Individual Contributors */}
-            <div className="glass-card">
-              <h3 style={{ fontSize: "15px", marginBottom: "12px" }}>Top Global Speakers</h3>
-              <div className="leaderboard-list">
-                <div className="leaderboard-row">
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    <div className="peer-avatar" style={{ width: "24px", height: "24px", fontSize: "10px" }}>K</div>
-                    <div>
-                      <div style={{ fontWeight: "600", fontSize: "13px" }}>Kalu K.</div>
-                      <span style={{ fontSize: "10px", color: "var(--text-secondary)" }}>Abiriba dialect</span>
-                    </div>
-                  </div>
-                  <strong style={{ fontSize: "13px", color: "var(--accent)" }}>4,120 pts</strong>
+        {/* SCREEN 6: LINGUISTIC DIALECT BRIDGE */}
+        {isRegistered && currentScreen === "bridge" && (
+          <div className="slide-up" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            <h2 style={{ fontSize: "20px" }}>Dialect Bridge</h2>
+            <p style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "-6px" }}>
+              Explore how words and orthography shift across Igbo, Yoruba, and Swahili dialects.
+            </p>
+            <div className="glass-card" style={{ padding: "16px" }}>
+              <div style={{ display: "flex", gap: "10px", marginBottom: "16px" }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: "block", fontSize: "11px", color: "var(--text-secondary)", marginBottom: "4px" }}>Source Dialect</label>
+                  <select className="form-input" defaultValue="Abiriba">
+                    <option>Abiriba</option>
+                    <option>Onitsha</option>
+                    <option>Owerri</option>
+                    <option>Nsukka</option>
+                  </select>
                 </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: "block", fontSize: "11px", color: "var(--text-secondary)", marginBottom: "4px" }}>Target Dialect</label>
+                  <select className="form-input" defaultValue="Owerri">
+                    <option>Abiriba</option>
+                    <option>Onitsha</option>
+                    <option>Owerri</option>
+                    <option>Nsukka</option>
+                  </select>
+                </div>
+              </div>
 
-                <div className="leaderboard-row">
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    <div className="peer-avatar" style={{ width: "24px", height: "24px", fontSize: "10px", background: "purple", color: "white" }}>A</div>
-                    <div>
-                      <div style={{ fontWeight: "600", fontSize: "13px" }}>Amina B.</div>
-                      <span style={{ fontSize: "10px", color: "var(--text-secondary)" }}>Katsina dialect</span>
-                    </div>
+              <div style={{ background: "#16171A", padding: "12px", borderRadius: "6px", border: "1px solid var(--border-subtle)" }}>
+                <p style={{ fontSize: "12px", color: "var(--text-secondary)" }}>Selected Stimulus: {activeStimulus.title}</p>
+                <div style={{ marginTop: "10px", display: "flex", flexDirection: "column", gap: "10px" }}>
+                  <div>
+                    <span style={{ fontSize: "10px", textTransform: "uppercase", color: "var(--primary)" }}>Source Text (Abiriba)</span>
+                    <p style={{ fontSize: "14px", fontStyle: "italic", marginTop: "2px" }}>
+                      "{activeStimulus.dialectsData?.["Abiriba"]?.audioMockText || "No metadata entry for this dialect."}"
+                    </p>
                   </div>
-                  <strong style={{ fontSize: "13px", color: "var(--accent)" }}>3,890 pts</strong>
+                  <hr style={{ border: "none", borderTop: "1px dashed var(--border-subtle)" }} />
+                  <div>
+                    <span style={{ fontSize: "10px", textTransform: "uppercase", color: "var(--success)" }}>Target Translation (Owerri)</span>
+                    <p style={{ fontSize: "14px", fontStyle: "italic", marginTop: "2px" }}>
+                      "{activeStimulus.dialectsData?.["Owerri"]?.audioMockText || "No metadata entry for this dialect."}"
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         )}
+
+        {/* SCREEN 7: RANK LEADERBOARD */}
+        {isRegistered && currentScreen === "leaderboard" && (
+          <div className="slide-up" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            <h2 style={{ fontSize: "20px" }}>Leaderboards</h2>
+            <div className="glass-card" style={{ padding: "16px" }}>
+              <h3 style={{ fontSize: "14px", marginBottom: "8px" }}>Dialect Contribution Ranks</h3>
+              <div className="leaderboard-list">
+                <div className="leaderboard-row">
+                  <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                    <span className="leaderboard-rank rank-gold">1</span>
+                    <span style={{ fontWeight: "700" }}>Owerri Igbo</span>
+                  </div>
+                  <span>421 Contribution Hours</span>
+                </div>
+                <div className="leaderboard-row">
+                  <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                    <span className="leaderboard-rank rank-silver">2</span>
+                    <span style={{ fontWeight: "700" }}>Onitsha Igbo</span>
+                  </div>
+                  <span>298 Contribution Hours</span>
+                </div>
+                <div className="leaderboard-row">
+                  <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                    <span className="leaderboard-rank rank-bronze">3</span>
+                    <span style={{ fontWeight: "700" }}>Abiriba Igbo</span>
+                  </div>
+                  <span>196 Contribution Hours</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
       </main>
 
-      {/* Bottom Tab Bar Navigation */}
+      {/* Navigation Footer */}
       {isRegistered && (
-        <nav className="bottom-nav">
-          <button className={`nav-item ${currentScreen === "solo" ? "active" : ""}`} onClick={() => setCurrentScreen("solo")}>
-            <Mic size={18} />
+        <footer className="app-footer-nav">
+          <button onClick={() => setCurrentScreen("solo")} className={`footer-nav-btn ${currentScreen === "solo" ? "active" : ""}`}>
+            <Mic size={15} />
             <span>Solo</span>
           </button>
-          <button className={`nav-item ${currentScreen === "multiplayer" ? "active" : ""}`} onClick={() => setCurrentScreen("multiplayer")}>
-            <Users size={18} />
+          <button onClick={() => setCurrentScreen("multiplayer")} className={`footer-nav-btn ${currentScreen === "multiplayer" ? "active" : ""}`}>
+            <Users size={15} />
             <span>Arena</span>
           </button>
-          <button className={`nav-item ${currentScreen === "bridge" ? "active" : ""}`} onClick={() => setCurrentScreen("bridge")}>
-            <BookOpen size={18} />
+          <button onClick={() => setCurrentScreen("bridge")} className={`footer-nav-btn ${currentScreen === "bridge" ? "active" : ""}`}>
+            <BookOpen size={15} />
             <span>Bridge</span>
           </button>
-          <button className={`nav-item ${currentScreen === "wallet" ? "active" : ""}`} onClick={() => setCurrentScreen("wallet")}>
-            <Wallet size={18} />
+          <button onClick={() => setCurrentScreen("wallet")} className={`footer-nav-btn ${currentScreen === "wallet" ? "active" : ""}`}>
+            <Wallet size={15} />
             <span>Wallet</span>
           </button>
-          <button className={`nav-item ${currentScreen === "leaderboard" ? "active" : ""}`} onClick={() => setCurrentScreen("leaderboard")}>
-            <Award size={18} />
+          <button onClick={() => setCurrentScreen("leaderboard")} className={`footer-nav-btn ${currentScreen === "leaderboard" ? "active" : ""}`}>
+            <Award size={15} />
             <span>Rank</span>
           </button>
-        </nav>
+        </footer>
       )}
     </div>
   );

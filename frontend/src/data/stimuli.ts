@@ -5,7 +5,7 @@ export interface Stimulus {
   description: string;
   imageUrl: string;
   audioPrompt: string;
-  dialectsData: {
+  dialectsData?: {
     [key: string]: {
       standard: string;
       phonetic: string;
