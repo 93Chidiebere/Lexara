@@ -26,14 +26,14 @@ app.add_middleware(
 )
 
 # Paths and Folders setup
-UPLOAD_DIR = pathlib.Path("uploads")
+UPLOAD_DIR = pathlib.Path(os.getenv("UPLOAD_DIR", "uploads"))
 AUDIO_DIR = UPLOAD_DIR / "audio"
 AUDIO_DIR.mkdir(parents=True, exist_ok=True)
 
 # Mount uploads folder to serve audio files statically
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
-DB_PATH = "lexara_dataset.db"
+DB_PATH = os.getenv("DB_PATH", "lexara_dataset.db")
 
 # Database initialization
 def init_db():

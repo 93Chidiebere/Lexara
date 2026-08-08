@@ -17,7 +17,7 @@ import {
 import { STIMULI, LANGUAGES_AND_DIALECTS } from "./data/stimuli";
 import type { Stimulus } from "./data/stimuli";
 
-const API_BASE = "http://localhost:8000";
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 
 export default function App() {
   // Navigation: "onboarding" | "solo" | "multiplayer" | "wallet" | "bridge" | "leaderboard" | "admin"
@@ -73,6 +73,17 @@ export default function App() {
   const [adminSubmissions, setAdminSubmissions] = useState<any[]>([]);
   const [adminFilter, setAdminFilter] = useState<string>("all");
   const [editingTexts, setEditingTexts] = useState<Record<number, string>>({});
+
+  const getWsUrl = (code: string) => {
+    let base = API_BASE;
+    if (base.startsWith("http")) {
+      base = base.replace(/^http/, "ws");
+    } else {
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      base = `${protocol}//${window.location.host}`;
+    }
+    return `${base}/ws/lobby/${code}?username=${username}&language=${language}&dialect=${activeDialect}`;
+  };
 
   // Check backend health
   useEffect(() => {
@@ -312,9 +323,7 @@ export default function App() {
     }
 
     // Connect to Backend WebSocket
-    const ws = new WebSocket(
-      `ws://localhost:8000/ws/lobby/${roomCode.trim()}?username=${username}&language=${language}&dialect=${activeDialect}`
-    );
+    const ws = new WebSocket(getWsUrl(roomCode.trim()));
     wsRef.current = ws;
 
     ws.onopen = () => {
@@ -394,9 +403,7 @@ export default function App() {
     
     // Connect WebSocket as Host
     setTimeout(() => {
-      const ws = new WebSocket(
-        `ws://localhost:8000/ws/lobby/${newCode}?username=${username}&language=${language}&dialect=${activeDialect}`
-      );
+      const ws = new WebSocket(getWsUrl(newCode));
       wsRef.current = ws;
 
       ws.onopen = () => {
