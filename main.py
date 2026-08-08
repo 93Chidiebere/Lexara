@@ -70,11 +70,11 @@ def init_db():
     """)
     
     # Add a default admin account
-    cursor.execute("SELECT username FROM users WHERE username = 'admin'")
+    cursor.execute("SELECT username FROM users WHERE username = 'vincent.chidiebere@outlook.com'")
     if not cursor.fetchone():
         cursor.execute(
             "INSERT INTO users (username, password, language, dialect, points) VALUES (?, ?, ?, ?, ?)",
-            ("admin", "admin123", "Igbo", "Onitsha", 500)
+            ("vincent.chidiebere@outlook.com", "Vincent1993#", "Igbo", "Onitsha", 500)
         )
         
     conn.commit()

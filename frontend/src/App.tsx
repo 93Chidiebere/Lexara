@@ -617,7 +617,7 @@ export default function App() {
             </div>
             
             {/* Admin Dashboard Entry */}
-            {username === "admin" && (
+            {username === "vincent.chidiebere@outlook.com" && (
               <button 
                 onClick={() => setCurrentScreen(currentScreen === "admin" ? "solo" : "admin")}
                 className="btn-skip"
