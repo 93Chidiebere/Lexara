@@ -603,6 +603,24 @@ export default function App() {
     }
   }, [currentScreen]);
 
+  const [leaderboardData, setLeaderboardData] = useState<any[]>([]);
+
+  const fetchLeaderboard = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/leaderboard`);
+      if (res.ok) {
+        const data = await res.json();
+        setLeaderboardData(data);
+      }
+    } catch (e) {}
+  };
+
+  useEffect(() => {
+    if (currentScreen === "leaderboard") {
+      fetchLeaderboard();
+    }
+  }, [currentScreen]);
+
   const verifySubmission = async (id: number, status: "approved" | "rejected", consensusText?: string) => {
     try {
       const res = await fetch(`${API_BASE}/api/admin/verify`, {
@@ -1716,31 +1734,31 @@ export default function App() {
         {/* SCREEN 7: RANK LEADERBOARD */}
         {isRegistered && currentScreen === "leaderboard" && (
           <div className="slide-up" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            <h2 style={{ fontSize: "20px" }}>Leaderboards</h2>
-            <div className="glass-card" style={{ padding: "16px" }}>
-              <h3 style={{ fontSize: "14px", marginBottom: "8px" }}>Dialect Contribution Ranks</h3>
+            <h2 style={{ fontSize: "20px", color: "var(--color-gold)" }}>Leaderboards</h2>
+            <div className="glass-card" style={{ padding: "16px", borderTop: "3px solid var(--color-gold)" }}>
+              <h3 style={{ fontSize: "14px", marginBottom: "12px" }}>Dialect Contribution Ranks</h3>
               <div className="leaderboard-list">
-                <div className="leaderboard-row">
-                  <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-                    <span className="leaderboard-rank rank-gold">1</span>
-                    <span style={{ fontWeight: "700" }}>Owerri Igbo</span>
+                {leaderboardData.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "20px", color: "var(--text-secondary)" }}>
+                    <p style={{ fontWeight: "600" }}>No contributions verified yet.</p>
+                    <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px" }}>
+                      Approved descriptions will update this leaderboard in real time!
+                    </p>
                   </div>
-                  <span>421 Contribution Hours</span>
-                </div>
-                <div className="leaderboard-row">
-                  <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-                    <span className="leaderboard-rank rank-silver">2</span>
-                    <span style={{ fontWeight: "700" }}>Onitsha Igbo</span>
-                  </div>
-                  <span>298 Contribution Hours</span>
-                </div>
-                <div className="leaderboard-row">
-                  <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-                    <span className="leaderboard-rank rank-bronze">3</span>
-                    <span style={{ fontWeight: "700" }}>Abiriba Igbo</span>
-                  </div>
-                  <span>196 Contribution Hours</span>
-                </div>
+                ) : (
+                  leaderboardData.map((item, index) => {
+                    const rankClass = index === 0 ? "rank-gold" : index === 1 ? "rank-silver" : index === 2 ? "rank-bronze" : "";
+                    return (
+                      <div key={index} className="leaderboard-row">
+                        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                          <span className={`leaderboard-rank ${rankClass}`}>{index + 1}</span>
+                          <span style={{ fontWeight: "700" }}>{item.language} ({item.dialect || "general"})</span>
+                        </div>
+                        <span>{item.contribution_count} {item.contribution_count === 1 ? "Contribution" : "Contributions"}</span>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </div>
           </div>

@@ -460,6 +460,17 @@ def health():
         "audio_storage_mode": "Cloudinary" if IS_CLOUDINARY else "Supabase" if IS_SUPABASE_STORAGE else "Local static directory"
     }
 
+@app.get("/api/leaderboard")
+def get_leaderboard():
+    # Fetch contribution count grouped by language & dialect for approved submissions
+    results = execute_query(
+        """SELECT language, dialect, COUNT(*) as contribution_count 
+           FROM submissions 
+           WHERE status = 'approved' 
+           GROUP BY language, dialect 
+           ORDER BY contribution_count DESC"""
+    )
+    return results or []
 
 # WEBSOCKETS MULTIPLAYER ENGINE
 
