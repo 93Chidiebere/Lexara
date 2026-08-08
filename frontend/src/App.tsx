@@ -28,10 +28,18 @@ export default function App() {
   // User Profile State
   const [username, setUsername] = useState<string>("");
   const [loginPassword, setLoginPassword] = useState<string>("");
+
+  // Anti-fraud Signup State Variables
+  const [signupEmail, setSignupEmail] = useState<string>("");
+  const [signupPhone, setSignupPhone] = useState<string>("");
+  const [signupFullName, setSignupFullName] = useState<string>("");
   const [signupPassword, setSignupPassword] = useState<string>("");
+  const [signupLocation, setSignupLocation] = useState<string>("");
+  const [signupLanguage, setSignupLanguage] = useState<string>("");
+  const [signupDialect, setSignupDialect] = useState<string>("");
+
   const [language, setLanguage] = useState<string>("Igbo");
-  const [dialect, setDialect] = useState<string>(""); // optional at signup
-  const [points, setPoints] = useState<number>(120);
+  const [points, setPoints] = useState<number>(0); // Starting points is 0!
   const [soloProgress, setSoloProgress] = useState<number>(0);
   const [activeDialect, setActiveDialect] = useState<string>(""); // chosen dynamically during gameplay
   const [errorMsg, setErrorMsg] = useState<string>("");
@@ -73,6 +81,8 @@ export default function App() {
   const [adminSubmissions, setAdminSubmissions] = useState<any[]>([]);
   const [adminFilter, setAdminFilter] = useState<string>("all");
   const [editingTexts, setEditingTexts] = useState<Record<number, string>>({});
+  const [adminSubTab, setAdminSubTab] = useState<"submissions" | "users">("submissions");
+  const [adminUsers, setAdminUsers] = useState<any[]>([]);
 
   const getWsUrl = (code: string) => {
     let base = API_BASE;
@@ -264,15 +274,22 @@ export default function App() {
     setSuccessMsg("");
 
     if (!username.trim()) {
-      setErrorMsg("Please enter a username.");
+      setErrorMsg("Please enter a username or email.");
       return;
     }
 
-    const payload = {
+    const payload = authTab === "login" ? {
       username: username,
-      password: authTab === "login" ? loginPassword : signupPassword,
-      language: language,
-      dialect: dialect // optional signup dialect
+      password: loginPassword
+    } : {
+      username: username,
+      email: signupEmail,
+      phone: signupPhone,
+      fullname: signupFullName,
+      password: signupPassword,
+      location: signupLocation,
+      language: signupLanguage,
+      dialect: signupDialect
     };
 
     try {
@@ -293,6 +310,7 @@ export default function App() {
       if (authTab === "signup") {
         setSuccessMsg("Account created! Please enter password below to Sign In.");
         setAuthTab("login");
+        setLoginPassword("");
         return;
       }
 
@@ -305,7 +323,12 @@ export default function App() {
         setActiveDialect(userData.dialect);
       }
       setIsRegistered(true);
-      setCurrentScreen("solo");
+      
+      if (userData.username === "vincent.chidiebere@outlook.com") {
+        setCurrentScreen("admin");
+      } else {
+        setCurrentScreen("solo");
+      }
 
     } catch (e: any) {
       setErrorMsg(e.message || "Cannot establish connection to database backend.");
@@ -563,9 +586,20 @@ export default function App() {
     } catch (e) {}
   };
 
+  const fetchAdminUsers = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/users`);
+      if (res.ok) {
+        const data = await res.json();
+        setAdminUsers(data);
+      }
+    } catch (e) {}
+  };
+
   useEffect(() => {
     if (currentScreen === "admin") {
       fetchAdminSubmissions();
+      fetchAdminUsers();
     }
   }, [currentScreen]);
 
@@ -605,32 +639,43 @@ export default function App() {
           setCurrentScreen("onboarding");
           if (wsRef.current) wsRef.current.close();
         }} title="Reset setup & profile">
-          <Globe className="app-logo-icon" size={18} color="var(--primary)" />
-          <h1 className="app-logo">LEXARA</h1>
+          <Globe className="app-logo-icon" size={18} color="var(--color-gold)" />
+          <h1 className="app-logo" style={{ color: "var(--color-gold)" }}>
+            {username === "vincent.chidiebere@outlook.com" ? "LEXARA ADMIN" : "LEXARA"}
+          </h1>
         </div>
 
         {isRegistered && (
           <div style={{ display: "flex", gap: "8px" }}>
             {/* User Level */}
-            <div className="user-status-badge">
-              <Award size={13} color="var(--text-secondary)" />
-              <span>Lvl {points >= 150 ? 3 : points >= 130 ? 2 : 1}</span>
-            </div>
+            {username !== "vincent.chidiebere@outlook.com" && (
+              <div className="user-status-badge">
+                <Award size={13} color="var(--text-secondary)" />
+                <span>Lvl {points >= 30 ? 3 : points >= 15 ? 2 : 1}</span>
+              </div>
+            )}
 
             {/* Wallet Tracker */}
-            <div className="user-status-badge points-badge" onClick={() => setCurrentScreen("wallet")}>
-              <Coins size={13} color="var(--primary)" />
-              <span>{points} Pts</span>
-            </div>
+            {username !== "vincent.chidiebere@outlook.com" && (
+              <div className="user-status-badge points-badge" onClick={() => setCurrentScreen("wallet")}>
+                <Coins size={13} color="var(--color-gold)" />
+                <span>{points} Pts</span>
+              </div>
+            )}
             
-            {/* Admin Dashboard Entry */}
+            {/* Admin Dashboard Exit/Logout */}
             {username === "vincent.chidiebere@outlook.com" && (
               <button 
-                onClick={() => setCurrentScreen(currentScreen === "admin" ? "solo" : "admin")}
+                onClick={() => {
+                  setIsRegistered(false);
+                  setCurrentScreen("onboarding");
+                  setUsername("");
+                  setLoginPassword("");
+                }}
                 className="btn-skip"
-                style={{ background: currentScreen === "admin" ? "var(--primary)" : "none", color: currentScreen === "admin" ? "black" : "white" }}
+                style={{ borderColor: "var(--danger)", color: "var(--danger)", padding: "4px 10px", fontSize: "11px" }}
               >
-                Admin
+                Log Out
               </button>
             )}
           </div>
@@ -638,20 +683,20 @@ export default function App() {
       </header>
 
       {/* Main Container */}
-      <main className="app-main">
+      <main className="app-content">
         
         {/* SCREEN 1: ONBOARDING LOGIN/SIGNUP */}
         {!isRegistered && (
           <div className="slide-up" style={{ maxWidth: "420px", margin: "20px auto 0 auto" }}>
             
             <div style={{ textAlign: "center", marginBottom: "20px" }}>
-              <h2 style={{ fontSize: "24px", fontWeight: "700", letterSpacing: "-0.5px" }}>Spontaneous Dialect Validation</h2>
-              <p style={{ color: "var(--text-secondary)", fontSize: "14px", marginTop: "6px" }}>
-                Preserving underrepresented African languages through real-time game verification.
+              <h2 style={{ fontSize: "24px", fontWeight: "800", color: "var(--color-gold)", letterSpacing: "-0.5px" }}>LEXARA</h2>
+              <p style={{ color: "var(--text-secondary)", fontSize: "13px", marginTop: "6px" }}>
+                Spontaneous Dialect Validation Engine
               </p>
             </div>
 
-            {/* Tabs Selector */}
+            {/* Tabs Selector with Gold underline highlights */}
             <div style={{ display: "flex", borderBottom: "1px solid var(--border-subtle)", marginBottom: "16px" }}>
               <button 
                 onClick={() => { setAuthTab("login"); setErrorMsg(""); }} 
@@ -660,9 +705,9 @@ export default function App() {
                   padding: "10px",
                   background: "none",
                   border: "none",
-                  color: authTab === "login" ? "var(--text-primary)" : "var(--text-muted)",
-                  borderBottom: authTab === "login" ? "2px solid var(--primary)" : "none",
-                  fontWeight: "600",
+                  color: authTab === "login" ? "var(--color-gold)" : "var(--text-muted)",
+                  borderBottom: authTab === "login" ? "2.5px solid var(--color-gold)" : "none",
+                  fontWeight: "700",
                   cursor: "pointer",
                   fontSize: "14px"
                 }}
@@ -676,9 +721,9 @@ export default function App() {
                   padding: "10px",
                   background: "none",
                   border: "none",
-                  color: authTab === "signup" ? "var(--text-primary)" : "var(--text-muted)",
-                  borderBottom: authTab === "signup" ? "2px solid var(--primary)" : "none",
-                  fontWeight: "600",
+                  color: authTab === "signup" ? "var(--color-gold)" : "var(--text-muted)",
+                  borderBottom: authTab === "signup" ? "2.5px solid var(--color-gold)" : "none",
+                  fontWeight: "700",
                   cursor: "pointer",
                   fontSize: "14px"
                 }}
@@ -688,85 +733,164 @@ export default function App() {
             </div>
 
             {/* Forms Panel */}
-            <div className="glass-card" style={{ padding: "20px" }}>
+            <div className="glass-card" style={{ padding: "20px", borderTop: "3px solid var(--color-isiagu)" }}>
               <form onSubmit={handleAuth} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                 
                 {errorMsg && (
-                  <div className="alert alert-error" style={{ display: "flex", gap: "8px", fontSize: "12px" }}>
-                    <AlertTriangle size={14} />
-                    <span>{errorMsg}</span>
+                  <div className="alert alert-error" style={{ display: "flex", gap: "8px", fontSize: "12px", background: "rgba(239, 68, 68, 0.05)", border: "1px solid rgba(239, 68, 68, 0.2)", padding: "10px", borderRadius: "6px" }}>
+                    <AlertTriangle size={14} color="var(--danger)" />
+                    <span style={{ color: "var(--danger)" }}>{errorMsg}</span>
                   </div>
                 )}
 
                 {successMsg && (
-                  <div className="alert alert-success" style={{ display: "flex", gap: "8px", fontSize: "12px" }}>
-                    <CheckCircle size={14} />
-                    <span>{successMsg}</span>
+                  <div className="alert alert-success" style={{ display: "flex", gap: "8px", fontSize: "12px", background: "rgba(16, 185, 129, 0.05)", border: "1px solid rgba(16, 185, 129, 0.2)", padding: "10px", borderRadius: "6px" }}>
+                    <CheckCircle size={14} color="var(--success)" />
+                    <span style={{ color: "var(--success)" }}>{successMsg}</span>
                   </div>
                 )}
 
-                <div>
-                  <label style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "var(--text-secondary)", marginBottom: "4px" }}>
-                    Username / Contributor Nickname
-                  </label>
-                  <input
-                    type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value.trim())}
-                    placeholder="e.g. Chinedu"
-                    className="form-input"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "var(--text-secondary)", marginBottom: "4px" }}>
-                    Password
-                  </label>
-                  <input
-                    type="password"
-                    value={authTab === "login" ? loginPassword : signupPassword}
-                    onChange={(e) => authTab === "login" ? setLoginPassword(e.target.value) : setSignupPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="form-input"
-                    required
-                  />
-                </div>
-
-                {authTab === "signup" && (
+                {authTab === "login" ? (
                   <>
                     <div>
                       <label style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "var(--text-secondary)", marginBottom: "4px" }}>
-                        Native Tribe (Primary Language)
+                        Username or Email
                       </label>
-                      <select
-                        value={language}
-                        onChange={(e) => setLanguage(e.target.value)}
+                      <input
+                        type="text"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value.trim())}
+                        placeholder="vincent.chidiebere@outlook.com"
                         className="form-input"
-                      >
-                        {Object.keys(LANGUAGES_AND_DIALECTS).map((lang) => (
-                          <option key={lang} value={lang}>{lang}</option>
-                        ))}
-                      </select>
+                        required
+                      />
                     </div>
 
                     <div>
                       <label style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "var(--text-secondary)", marginBottom: "4px" }}>
-                        Primary Dialect (Optional - Can leave empty)
+                        Password
                       </label>
-                      <select
-                        value={dialect}
-                        onChange={(e) => setDialect(e.target.value)}
+                      <input
+                        type="password"
+                        value={loginPassword}
+                        onChange={(e) => setLoginPassword(e.target.value)}
+                        placeholder="••••••••"
                         className="form-input"
-                      >
-                        <option value="">Choose Dialect (Or skip)</option>
-                        {((LANGUAGES_AND_DIALECTS as any)[language] || []).map((dial: string) => (
-                          <option key={dial} value={dial}>{dial}</option>
-                        ))}
-                      </select>
-                      <span style={{ fontSize: "10px", color: "var(--text-muted)" }}>
-                        Leave empty if you speak multiple dialects. You can choose during gameplay.
-                      </span>
+                        required
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <label style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "var(--text-secondary)", marginBottom: "4px" }}>
+                        Full Name
+                      </label>
+                      <input
+                        type="text"
+                        value={signupFullName}
+                        onChange={(e) => setSignupFullName(e.target.value)}
+                        placeholder="e.g. Vincent Chidiebere"
+                        className="form-input"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "var(--text-secondary)", marginBottom: "4px" }}>
+                        Username
+                      </label>
+                      <input
+                        type="text"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value.trim())}
+                        placeholder="e.g. chidiebere123"
+                        className="form-input"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "var(--text-secondary)", marginBottom: "4px" }}>
+                        Email Address
+                      </label>
+                      <input
+                        type="email"
+                        value={signupEmail}
+                        onChange={(e) => setSignupEmail(e.target.value.trim())}
+                        placeholder="vincent.chidiebere@outlook.com"
+                        className="form-input"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "var(--text-secondary)", marginBottom: "4px" }}>
+                        Phone Number
+                      </label>
+                      <input
+                        type="tel"
+                        value={signupPhone}
+                        onChange={(e) => setSignupPhone(e.target.value.trim())}
+                        placeholder="e.g. 08031234567"
+                        className="form-input"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "var(--text-secondary)", marginBottom: "4px" }}>
+                        Password
+                      </label>
+                      <input
+                        type="password"
+                        value={signupPassword}
+                        onChange={(e) => setSignupPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="form-input"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "var(--text-secondary)", marginBottom: "4px" }}>
+                        Location (City, State)
+                      </label>
+                      <input
+                        type="text"
+                        value={signupLocation}
+                        onChange={(e) => setSignupLocation(e.target.value)}
+                        placeholder="e.g. Enugu, Enugu State"
+                        className="form-input"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "var(--text-secondary)", marginBottom: "4px" }}>
+                        Primary Language (Tribe)
+                      </label>
+                      <input
+                        type="text"
+                        value={signupLanguage}
+                        onChange={(e) => setSignupLanguage(e.target.value)}
+                        placeholder="e.g. Igbo, Tiv, Yoruba, Hausa"
+                        className="form-input"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "var(--text-secondary)", marginBottom: "4px" }}>
+                        Dialect (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={signupDialect}
+                        onChange={(e) => setSignupDialect(e.target.value)}
+                        placeholder="e.g. Mgbowo, Abiriba"
+                        className="form-input"
+                      />
                     </div>
                   </>
                 )}
@@ -789,16 +913,28 @@ export default function App() {
                   <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
                     Active Dialect:
                   </span>
-                  <select 
-                    value={activeDialect} 
-                    onChange={(e) => setActiveDialect(e.target.value)}
-                    className="form-input"
-                    style={{ padding: "2px 8px", fontSize: "11px", width: "auto", display: "inline-block" }}
-                  >
-                    {((LANGUAGES_AND_DIALECTS as any)[language] || []).map((d: string) => (
-                      <option key={d} value={d}>{d}</option>
-                    ))}
-                  </select>
+                  {((LANGUAGES_AND_DIALECTS as any)[language] || []).length > 0 ? (
+                    <select 
+                      value={activeDialect} 
+                      onChange={(e) => setActiveDialect(e.target.value)}
+                      className="form-input"
+                      style={{ padding: "2px 8px", fontSize: "11px", width: "auto", display: "inline-block" }}
+                    >
+                      <option value="">Choose Dialect (Or skip)</option>
+                      {((LANGUAGES_AND_DIALECTS as any)[language] || []).map((d: string) => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input 
+                      type="text"
+                      value={activeDialect}
+                      onChange={(e) => setActiveDialect(e.target.value)}
+                      placeholder="Type Dialect"
+                      className="form-input"
+                      style={{ padding: "2px 8px", fontSize: "11px", width: "100px", display: "inline-block" }}
+                    />
+                  )}
                   <span 
                     onClick={() => {
                       setIsRegistered(false);
@@ -1316,80 +1452,165 @@ export default function App() {
           <div className="slide-up" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
-                <h2 style={{ fontSize: "20px" }}>Dataset Quality Dashboard</h2>
+                <h2 style={{ fontSize: "20px", color: "var(--color-gold)" }}>Platform Admin Panel</h2>
                 <p style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "2px" }}>
-                  Platform Owner Auditing Interface: play audio files and verify ASR transcriptions.
+                  Dataset Management, User Directory & Verification Center
                 </p>
               </div>
-              <button className="btn-skip" onClick={() => fetchAdminSubmissions()}>Refresh</button>
+              <button className="btn-skip" onClick={() => { fetchAdminSubmissions(); fetchAdminUsers(); }}>Refresh</button>
             </div>
 
-            {/* Filter selectors */}
-            <div style={{ display: "flex", gap: "8px" }}>
-              <button onClick={() => setAdminFilter("all")} className={`btn-skip ${adminFilter === "all" ? "active" : ""}`} style={{ background: adminFilter === "all" ? "#3A3B40" : "none" }}>All Submissions</button>
-              <button onClick={() => setAdminFilter("pending")} className={`btn-skip ${adminFilter === "pending" ? "active" : ""}`} style={{ background: adminFilter === "pending" ? "#3A3B40" : "none" }}>Pending Audit</button>
-              <button onClick={() => setAdminFilter("approved")} className={`btn-skip ${adminFilter === "approved" ? "active" : ""}`} style={{ background: adminFilter === "approved" ? "#3A3B40" : "none" }}>Approved</button>
+            {/* Custom Admin Sub-Tabs */}
+            <div style={{ display: "flex", borderBottom: "1px solid var(--border-subtle)", marginBottom: "4px" }}>
+              <button 
+                onClick={() => setAdminSubTab("submissions")}
+                className="btn-skip"
+                style={{
+                  flex: 1,
+                  padding: "10px",
+                  borderRadius: "0",
+                  border: "none",
+                  borderBottom: adminSubTab === "submissions" ? "2.5px solid var(--color-gold)" : "none",
+                  color: adminSubTab === "submissions" ? "var(--color-gold)" : "var(--text-secondary)",
+                  fontWeight: "600"
+                }}
+              >
+                Submissions Audit
+              </button>
+              <button 
+                onClick={() => setAdminSubTab("users")}
+                className="btn-skip"
+                style={{
+                  flex: 1,
+                  padding: "10px",
+                  borderRadius: "0",
+                  border: "none",
+                  borderBottom: adminSubTab === "users" ? "2.5px solid var(--color-gold)" : "none",
+                  color: adminSubTab === "users" ? "var(--color-gold)" : "var(--text-secondary)",
+                  fontWeight: "600"
+                }}
+              >
+                Registered Contributors
+              </button>
             </div>
 
-            {/* Submissions auditing list */}
-            <div className="glass-card" style={{ padding: "0", overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
-                <thead>
-                  <tr style={{ background: "#16171A", borderBottom: "1px solid var(--border-subtle)" }}>
-                    <th style={{ padding: "10px", textAlign: "left" }}>ID</th>
-                    <th style={{ padding: "10px", textAlign: "left" }}>Contributor</th>
-                    <th style={{ padding: "10px", textAlign: "left" }}>Tribe/Dialect</th>
-                    <th style={{ padding: "10px", textAlign: "left" }}>Stimulus</th>
-                    <th style={{ padding: "10px", textAlign: "left" }}>Raw Voice / Audio Playback</th>
-                    <th style={{ padding: "10px", textAlign: "left" }}>ASR Transcription Text</th>
-                    <th style={{ padding: "10px", textAlign: "center" }}>Audit Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {adminSubmissions
-                    .filter(sub => adminFilter === "all" ? true : sub.status === adminFilter)
-                    .map((sub) => (
-                      <tr key={sub.id} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                        <td style={{ padding: "10px" }}>{sub.id}</td>
-                        <td style={{ padding: "10px" }}>{sub.username}</td>
-                        <td style={{ padding: "10px" }}>{sub.language} ({sub.dialect || "general"})</td>
-                        <td style={{ padding: "10px" }}>{sub.image_id}</td>
-                        <td style={{ padding: "10px" }}>
-                          {/* RAW SPEECH AUDIO FILE PLAYBACK */}
-                          <audio src={`${API_BASE}${sub.audio_path}`} controls style={{ height: "28px", width: "160px" }} />
-                        </td>
-                        <td style={{ padding: "10px" }}>
-                          <input
-                            type="text"
-                            value={editingTexts[sub.id] !== undefined ? editingTexts[sub.id] : (sub.consensus_text || sub.transcription)}
-                            onChange={(e) => setEditingTexts({ ...editingTexts, [sub.id]: e.target.value })}
-                            className="form-input"
-                            style={{ fontSize: "11px", padding: "4px 8px" }}
-                          />
-                        </td>
-                        <td style={{ padding: "10px", textAlign: "center" }}>
-                          <div style={{ display: "flex", gap: "4px", justifyContent: "center" }}>
-                            <button
-                              onClick={() => verifySubmission(sub.id, "approved", editingTexts[sub.id])}
-                              className="btn-skip"
-                              style={{ background: sub.status === "approved" ? "var(--success)" : "none", color: sub.status === "approved" ? "black" : "var(--success)", border: "1px solid var(--success)", padding: "2px 6px" }}
-                            >
-                              Approve
-                            </button>
-                            <button
-                              onClick={() => verifySubmission(sub.id, "rejected")}
-                              className="btn-skip"
-                              style={{ background: sub.status === "rejected" ? "var(--error)" : "none", color: sub.status === "rejected" ? "white" : "var(--error)", border: "1px solid var(--error)", padding: "2px 6px" }}
-                            >
-                              Reject
-                            </button>
-                          </div>
+            {adminSubTab === "submissions" ? (
+              <>
+                {/* Filter selectors */}
+                <div style={{ display: "flex", gap: "8px" }}>
+                  <button onClick={() => setAdminFilter("all")} className={`btn-skip ${adminFilter === "all" ? "active" : ""}`} style={{ background: adminFilter === "all" ? "#3A3B40" : "none" }}>All Submissions</button>
+                  <button onClick={() => setAdminFilter("pending")} className={`btn-skip ${adminFilter === "pending" ? "active" : ""}`} style={{ background: adminFilter === "pending" ? "#3A3B40" : "none" }}>Pending Audit</button>
+                  <button onClick={() => setAdminFilter("approved")} className={`btn-skip ${adminFilter === "approved" ? "active" : ""}`} style={{ background: adminFilter === "approved" ? "#3A3B40" : "none" }}>Approved</button>
+                </div>
+
+                {/* Submissions auditing list */}
+                <div className="glass-card" style={{ padding: "0", overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", minWidth: "600px" }}>
+                    <thead>
+                      <tr style={{ background: "#16171A", borderBottom: "1px solid var(--border-subtle)" }}>
+                        <th style={{ padding: "10px", textAlign: "left" }}>ID</th>
+                        <th style={{ padding: "10px", textAlign: "left" }}>Contributor</th>
+                        <th style={{ padding: "10px", textAlign: "left" }}>Tribe/Dialect</th>
+                        <th style={{ padding: "10px", textAlign: "left" }}>Stimulus</th>
+                        <th style={{ padding: "10px", textAlign: "left" }}>Raw Voice</th>
+                        <th style={{ padding: "10px", textAlign: "left" }}>ASR Transcription Text</th>
+                        <th style={{ padding: "10px", textAlign: "center" }}>Audit Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {adminSubmissions.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} style={{ padding: "20px", textAlign: "center", color: "var(--text-muted)" }}>
+                            No submissions recorded yet.
+                          </td>
+                        </tr>
+                      ) : (
+                        adminSubmissions
+                          .filter(sub => adminFilter === "all" ? true : sub.status === adminFilter)
+                          .map((sub) => (
+                            <tr key={sub.id} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                              <td style={{ padding: "10px" }}>{sub.id}</td>
+                              <td style={{ padding: "10px", fontWeight: "600" }}>{sub.username}</td>
+                              <td style={{ padding: "10px" }}>{sub.language} ({sub.dialect || "general"})</td>
+                              <td style={{ padding: "10px" }}>{sub.image_id}</td>
+                              <td style={{ padding: "10px" }}>
+                                <audio src={sub.audio_path.startsWith("http") ? sub.audio_path : `${API_BASE}${sub.audio_path}`} controls style={{ height: "28px", width: "150px" }} />
+                              </td>
+                              <td style={{ padding: "10px" }}>
+                                <input
+                                  type="text"
+                                  value={editingTexts[sub.id] !== undefined ? editingTexts[sub.id] : (sub.consensus_text || sub.transcription)}
+                                  onChange={(e) => setEditingTexts({ ...editingTexts, [sub.id]: e.target.value })}
+                                  className="form-input"
+                                  style={{ fontSize: "11px", padding: "4px 8px" }}
+                                />
+                              </td>
+                              <td style={{ padding: "10px", textAlign: "center" }}>
+                                <div style={{ display: "flex", gap: "4px", justifyContent: "center" }}>
+                                  <button
+                                    onClick={() => verifySubmission(sub.id, "approved", editingTexts[sub.id])}
+                                    className="btn-skip"
+                                    style={{ background: sub.status === "approved" ? "var(--success)" : "none", color: sub.status === "approved" ? "black" : "var(--success)", border: "1px solid var(--success)", padding: "2px 6px" }}
+                                  >
+                                    Approve
+                                  </button>
+                                  <button
+                                    onClick={() => verifySubmission(sub.id, "rejected")}
+                                    className="btn-skip"
+                                    style={{ background: sub.status === "rejected" ? "var(--error)" : "none", color: sub.status === "rejected" ? "white" : "var(--error)", border: "1px solid var(--error)", padding: "2px 6px" }}
+                                  >
+                                    Reject
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            ) : (
+              /* REGISTERED USERS LIST TAB */
+              <div className="glass-card" style={{ padding: "0", overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", minWidth: "600px" }}>
+                  <thead>
+                    <tr style={{ background: "#16171A", borderBottom: "1px solid var(--border-subtle)" }}>
+                      <th style={{ padding: "10px", textAlign: "left" }}>Username</th>
+                      <th style={{ padding: "10px", textAlign: "left" }}>Full Name</th>
+                      <th style={{ padding: "10px", textAlign: "left" }}>Email</th>
+                      <th style={{ padding: "10px", textAlign: "left" }}>Phone</th>
+                      <th style={{ padding: "10px", textAlign: "left" }}>Location</th>
+                      <th style={{ padding: "10px", textAlign: "left" }}>Tribe (Language)</th>
+                      <th style={{ padding: "10px", textAlign: "left" }}>Dialect</th>
+                      <th style={{ padding: "10px", textAlign: "center" }}>Points (Coins)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {adminUsers.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} style={{ padding: "20px", textAlign: "center", color: "var(--text-muted)" }}>
+                          No users registered in the database.
                         </td>
                       </tr>
-                    ))}
-                </tbody>
-              </table>
-            </div>
+                    ) : (
+                      adminUsers.map((u) => (
+                        <tr key={u.username} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                          <td style={{ padding: "10px", fontWeight: "600" }}>{u.username}</td>
+                          <td style={{ padding: "10px" }}>{u.fullname || "N/A"}</td>
+                          <td style={{ padding: "10px" }}>{u.email || "N/A"}</td>
+                          <td style={{ padding: "10px" }}>{u.phone || "N/A"}</td>
+                          <td style={{ padding: "10px" }}>{u.location || "N/A"}</td>
+                          <td style={{ padding: "10px" }}>{u.language}</td>
+                          <td style={{ padding: "10px" }}>{u.dialect || "general"}</td>
+                          <td style={{ padding: "10px", textAlign: "center", fontWeight: "700", color: "var(--color-gold)" }}>{u.points}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 
@@ -1528,25 +1749,25 @@ export default function App() {
       </main>
 
       {/* Navigation Footer */}
-      {isRegistered && (
-        <footer className="app-footer-nav">
-          <button onClick={() => setCurrentScreen("solo")} className={`footer-nav-btn ${currentScreen === "solo" ? "active" : ""}`}>
+      {isRegistered && username !== "vincent.chidiebere@outlook.com" && (
+        <footer className="bottom-nav">
+          <button onClick={() => setCurrentScreen("solo")} className={`nav-item ${currentScreen === "solo" ? "active" : ""}`}>
             <Mic size={15} />
             <span>Solo</span>
           </button>
-          <button onClick={() => setCurrentScreen("multiplayer")} className={`footer-nav-btn ${currentScreen === "multiplayer" ? "active" : ""}`}>
+          <button onClick={() => setCurrentScreen("multiplayer")} className={`nav-item ${currentScreen === "multiplayer" ? "active" : ""}`}>
             <Users size={15} />
             <span>Arena</span>
           </button>
-          <button onClick={() => setCurrentScreen("bridge")} className={`footer-nav-btn ${currentScreen === "bridge" ? "active" : ""}`}>
+          <button onClick={() => setCurrentScreen("bridge")} className={`nav-item ${currentScreen === "bridge" ? "active" : ""}`}>
             <BookOpen size={15} />
             <span>Bridge</span>
           </button>
-          <button onClick={() => setCurrentScreen("wallet")} className={`footer-nav-btn ${currentScreen === "wallet" ? "active" : ""}`}>
+          <button onClick={() => setCurrentScreen("wallet")} className={`nav-item ${currentScreen === "wallet" ? "active" : ""}`}>
             <Wallet size={15} />
             <span>Wallet</span>
           </button>
-          <button onClick={() => setCurrentScreen("leaderboard")} className={`footer-nav-btn ${currentScreen === "leaderboard" ? "active" : ""}`}>
+          <button onClick={() => setCurrentScreen("leaderboard")} className={`nav-item ${currentScreen === "leaderboard" ? "active" : ""}`}>
             <Award size={15} />
             <span>Rank</span>
           </button>

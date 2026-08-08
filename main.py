@@ -88,6 +88,41 @@ def execute_query(query: str, params: tuple = ()):
 
 # Initialize DB structure
 def init_db():
+    needs_migration = False
+    if IS_POSTGRES:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SELECT 1 FROM information_schema.tables WHERE table_name='users'")
+            if cursor.fetchone():
+                cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_name='users' AND column_name='email'")
+                if not cursor.fetchone():
+                    needs_migration = True
+            if needs_migration:
+                cursor.execute("DROP TABLE IF EXISTS users CASCADE")
+                cursor.execute("DROP TABLE IF EXISTS submissions CASCADE")
+        except Exception:
+            pass
+        conn.commit()
+        conn.close()
+    else:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("PRAGMA table_info(users)")
+            rows = cursor.fetchall()
+            if rows:
+                columns = [row[1] for row in rows]
+                if 'email' not in columns:
+                    needs_migration = True
+            if needs_migration:
+                cursor.execute("DROP TABLE IF EXISTS users")
+                cursor.execute("DROP TABLE IF EXISTS submissions")
+        except Exception:
+            pass
+        conn.commit()
+        conn.close()
+
     if IS_POSTGRES:
         # Create Postgres tables if they do not exist
         conn = get_db_connection()
@@ -95,10 +130,14 @@ def init_db():
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
             username VARCHAR(255) PRIMARY KEY,
+            email VARCHAR(255) UNIQUE NOT NULL,
+            phone VARCHAR(255) NOT NULL,
+            fullname VARCHAR(255) NOT NULL,
             password VARCHAR(255) NOT NULL,
+            location VARCHAR(255) NOT NULL,
             language VARCHAR(255) NOT NULL,
             dialect VARCHAR(255),
-            points INTEGER DEFAULT 120,
+            points INTEGER DEFAULT 0,
             solo_progress INTEGER DEFAULT 0
         )
         """)
@@ -121,8 +160,8 @@ def init_db():
         cursor.execute("SELECT username FROM users WHERE username = %s", ("vincent.chidiebere@outlook.com",))
         if not cursor.fetchone():
             cursor.execute(
-                "INSERT INTO users (username, password, language, dialect, points) VALUES (%s, %s, %s, %s, %s)",
-                ("vincent.chidiebere@outlook.com", "Vincent1993#", "Igbo", "Onitsha", 500)
+                "INSERT INTO users (username, email, phone, fullname, password, location, language, dialect, points) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                ("vincent.chidiebere@outlook.com", "vincent.chidiebere@outlook.com", "08000000000", "Vincent Chidiebere", "Vincent1993#", "Lagos, Nigeria", "Igbo", "Onitsha", 500)
             )
         conn.commit()
         conn.close()
@@ -133,10 +172,14 @@ def init_db():
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
             username TEXT PRIMARY KEY,
+            email TEXT UNIQUE NOT NULL,
+            phone TEXT NOT NULL,
+            fullname TEXT NOT NULL,
             password TEXT NOT NULL,
+            location TEXT NOT NULL,
             language TEXT NOT NULL,
             dialect TEXT,
-            points INTEGER DEFAULT 120,
+            points INTEGER DEFAULT 0,
             solo_progress INTEGER DEFAULT 0
         )
         """)
@@ -158,8 +201,8 @@ def init_db():
         cursor.execute("SELECT username FROM users WHERE username = 'vincent.chidiebere@outlook.com'")
         if not cursor.fetchone():
             cursor.execute(
-                "INSERT INTO users (username, password, language, dialect, points) VALUES (?, ?, ?, ?, ?)",
-                ("vincent.chidiebere@outlook.com", "Vincent1993#", "Igbo", "Onitsha", 500)
+                "INSERT INTO users (username, email, phone, fullname, password, location, language, dialect, points) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                ("vincent.chidiebere@outlook.com", "vincent.chidiebere@outlook.com", "08000000000", "Vincent Chidiebere", "Vincent1993#", "Lagos, Nigeria", "Igbo", "Onitsha", 500)
             )
         conn.commit()
         conn.close()
@@ -169,7 +212,11 @@ init_db()
 # Models
 class SignupRequest(BaseModel):
     username: str
+    email: str
+    phone: str
+    fullname: str
     password: str
+    location: str
     language: str
     dialect: str = ""
 
@@ -225,26 +272,31 @@ def upload_file_handler(temp_path: str, file_name: str) -> str:
 
 @app.post("/api/signup")
 def signup(req: SignupRequest):
-    # Check if user exists
-    users = execute_query("SELECT username FROM users WHERE username = %s", (req.username,))
+    # Check if user exists by username or email
+    users = execute_query("SELECT username FROM users WHERE username = %s OR email = %s", (req.username, req.email))
     if users:
-        raise HTTPException(status_code=400, detail="Username already exists")
+        raise HTTPException(status_code=400, detail="Username or email already exists")
         
     execute_query(
-        "INSERT INTO users (username, password, language, dialect, points, solo_progress) VALUES (%s, %s, %s, %s, 120, 0)",
-        (req.username, req.password, req.language, req.dialect if req.dialect else None)
+        "INSERT INTO users (username, email, phone, fullname, password, location, language, dialect, points, solo_progress) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 0, 0)",
+        (req.username, req.email, req.phone, req.fullname, req.password, req.location, req.language, req.dialect if req.dialect else None)
     )
     return {"message": "Signup successful", "username": req.username}
 
 @app.post("/api/login")
 def login(req: LoginRequest):
-    users = execute_query("SELECT * FROM users WHERE username = %s", (req.username,))
+    # Support signing in using email or username
+    users = execute_query("SELECT * FROM users WHERE username = %s OR email = %s", (req.username, req.username))
     if not users or users[0]["password"] != req.password:
-        raise HTTPException(status_code=401, detail="Invalid username or password")
+        raise HTTPException(status_code=401, detail="Invalid username/email or password")
         
     user = users[0]
     return {
         "username": user["username"],
+        "email": user["email"],
+        "phone": user["phone"],
+        "fullname": user["fullname"],
+        "location": user["location"],
         "language": user["language"],
         "dialect": user["dialect"] if user["dialect"] else "",
         "points": user["points"],
@@ -377,6 +429,10 @@ async def validate(
 @app.get("/api/admin/submissions")
 def admin_submissions():
     return execute_query("SELECT * FROM submissions ORDER BY id DESC")
+
+@app.get("/api/admin/users")
+def admin_users():
+    return execute_query("SELECT username, email, phone, fullname, location, language, dialect, points, solo_progress FROM users ORDER BY username ASC")
 
 @app.post("/api/admin/verify")
 def admin_verify(req: VerifyRequest):
