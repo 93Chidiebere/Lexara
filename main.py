@@ -30,17 +30,20 @@ UPLOAD_DIR = pathlib.Path(os.getenv("UPLOAD_DIR", "uploads"))
 AUDIO_DIR = UPLOAD_DIR / "audio"
 AUDIO_DIR.mkdir(parents=True, exist_ok=True)
 
-# Mount uploads folder to serve audio files statically
+# Mount uploads folder to serve audio files statically (for local SQLite mode)
 app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
+
+# Supabase Credentials Configuration (for Stateless Production deployment)
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+IS_SUPABASE = bool(SUPABASE_URL and SUPABASE_KEY)
 
 DB_PATH = os.getenv("DB_PATH", "lexara_dataset.db")
 
-# Database initialization
-def init_db():
+# Database initialization (only for local SQLite mode)
+def init_local_db():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    
-    # Create Users Table
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS users (
         username TEXT PRIMARY KEY,
@@ -51,8 +54,6 @@ def init_db():
         solo_progress INTEGER DEFAULT 0
     )
     """)
-    
-    # Create Submissions Table
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS submissions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -68,19 +69,17 @@ def init_db():
         created_at TEXT NOT NULL
     )
     """)
-    
-    # Add a default admin account
     cursor.execute("SELECT username FROM users WHERE username = 'vincent.chidiebere@outlook.com'")
     if not cursor.fetchone():
         cursor.execute(
             "INSERT INTO users (username, password, language, dialect, points) VALUES (?, ?, ?, ?, ?)",
             ("vincent.chidiebere@outlook.com", "Vincent1993#", "Igbo", "Onitsha", 500)
         )
-        
     conn.commit()
     conn.close()
 
-init_db()
+if not IS_SUPABASE:
+    init_local_db()
 
 # Models
 class SignupRequest(BaseModel):
@@ -95,21 +94,68 @@ class LoginRequest(BaseModel):
 
 class VerifyRequest(BaseModel):
     submission_id: int
-    status: str  # 'approved' or 'rejected'
+    status: str
     consensus_text: str = None
 
 
-# Helpers to query database
-def get_user(username: str):
+# SUPABASE REST API UTILITIES
+
+def get_supabase_headers():
+    return {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": "return=representation"
+    }
+
+def supabase_get_user(username: str):
+    url = f"{SUPABASE_URL}/rest/v1/users?username=eq.{username}"
+    res = requests.get(url, headers=get_supabase_headers())
+    if res.status_code == 200:
+        users = res.json()
+        return users[0] if users else None
+    return None
+
+def supabase_update_user(username: str, data: dict):
+    url = f"{SUPABASE_URL}/rest/v1/users?username=eq.{username}"
+    requests.patch(url, headers=get_supabase_headers(), json=data)
+
+def supabase_upload_audio(file_path: str, file_name: str) -> str:
+    # Upload to Supabase Storage Bucket named 'lexara-audio'
+    url = f"{SUPABASE_URL}/storage/v1/object/lexara-audio/{file_name}"
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "audio/wav"
+    }
+    with open(file_path, "rb") as f:
+        file_data = f.read()
+    res = requests.post(url, headers=headers, data=file_data)
+    if res.status_code not in (200, 201):
+        raise Exception(f"Supabase storage upload failed: {res.text}")
+    # Return the public URL
+    return f"{SUPABASE_URL}/storage/v1/object/public/lexara-audio/{file_name}"
+
+
+# DUAL MODE DATABASE ACCESSORS
+
+def get_user_profile(username: str):
+    if IS_SUPABASE:
+        return supabase_get_user(username)
+    
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
     user = cursor.fetchone()
     conn.close()
-    return user
+    return dict(user) if user else None
 
-def update_user_points_and_progress(username: str, points: int, progress: int):
+def update_user_points(username: str, points: int, progress: int):
+    if IS_SUPABASE:
+        supabase_update_user(username, {"points": points, "solo_progress": progress})
+        return
+    
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
@@ -124,16 +170,34 @@ def update_user_points_and_progress(username: str, points: int, progress: int):
 
 @app.post("/api/signup")
 def signup(req: SignupRequest):
+    if IS_SUPABASE:
+        # Check if user exists
+        existing = supabase_get_user(req.username)
+        if existing:
+            raise HTTPException(status_code=400, detail="Username already exists")
+        
+        # Insert to Supabase Postgres
+        url = f"{SUPABASE_URL}/rest/v1/users"
+        payload = {
+            "username": req.username,
+            "password": req.password,
+            "language": req.language,
+            "dialect": req.dialect if req.dialect else None,
+            "points": 120,
+            "solo_progress": 0
+        }
+        res = requests.post(url, headers=get_supabase_headers(), json=payload)
+        if res.status_code not in (200, 201):
+            raise HTTPException(status_code=500, detail=f"Database error: {res.text}")
+        return {"message": "Signup successful", "username": req.username}
+
+    # SQLite Fallback Mode
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    
-    # Check if username exists
     cursor.execute("SELECT username FROM users WHERE username = ?", (req.username,))
     if cursor.fetchone():
         conn.close()
         raise HTTPException(status_code=400, detail="Username already exists")
-        
-    # Insert new user
     cursor.execute(
         "INSERT INTO users (username, password, language, dialect, points, solo_progress) VALUES (?, ?, ?, ?, 120, 0)",
         (req.username, req.password, req.language, req.dialect if req.dialect else None)
@@ -144,7 +208,7 @@ def signup(req: SignupRequest):
 
 @app.post("/api/login")
 def login(req: LoginRequest):
-    user = get_user(req.username)
+    user = get_user_profile(req.username)
     if not user or user["password"] != req.password:
         raise HTTPException(status_code=401, detail="Invalid username or password")
         
@@ -158,26 +222,35 @@ def login(req: LoginRequest):
 
 @app.post("/api/upload-audio")
 async def upload_audio(audio: UploadFile = File(...)):
-    # Save audio file to uploads/audio
+    # Save audio file temporarily
     file_ext = os.path.splitext(audio.filename)[1] if audio.filename else ".wav"
     file_name = f"{uuid.uuid4()}{file_ext}"
-    saved_path = AUDIO_DIR / file_name
+    temp_path = AUDIO_DIR / file_name
     
-    with open(saved_path, "wb") as buffer:
+    with open(temp_path, "wb") as buffer:
         buffer.write(await audio.read())
         
-    # Transcribe audio using validation script helper
+    # Transcribe audio using Whisper
     from validate_description import transcribe_audio
     try:
-        text = transcribe_audio(str(saved_path))
+        text = transcribe_audio(str(temp_path))
+        
+        if IS_SUPABASE:
+            # Upload to Cloud Bucket and get public link, then remove local temp
+            audio_url = supabase_upload_audio(str(temp_path), file_name)
+            if temp_path.exists():
+                temp_path.unlink()
+        else:
+            # Leave local file and return local mount link
+            audio_url = f"/uploads/audio/{file_name}"
+            
     except Exception as e:
-        # Cleanup file on error
-        if saved_path.exists():
-            saved_path.unlink()
+        if temp_path.exists():
+            temp_path.unlink()
         raise HTTPException(status_code=500, detail=f"Transcription failed: {str(e)}")
         
     return {
-        "audio_url": f"/uploads/audio/{file_name}",
+        "audio_url": audio_url,
         "transcription": text
     }
 
@@ -193,9 +266,9 @@ async def validate(
     # Save uploaded files temporarily
     file_ext = os.path.splitext(audio.filename)[1] if audio.filename else ".wav"
     audio_file_name = f"{uuid.uuid4()}{file_ext}"
-    audio_path = AUDIO_DIR / audio_file_name
+    temp_audio_path = AUDIO_DIR / audio_file_name
     
-    with open(audio_path, "wb") as buffer:
+    with open(temp_audio_path, "wb") as buffer:
         buffer.write(await audio.read())
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(image.filename)[1]) as tmp_image:
@@ -205,40 +278,23 @@ async def validate(
     try:
         # Load API keys and run validation
         from validate_description import validate_description
-        result = validate_description(image_path, str(audio_path), language)
+        result = validate_description(image_path, str(temp_audio_path), language)
         
         # Pull player current state from db
-        user = get_user(username)
+        user = get_user_profile(username)
         current_points = user["points"] if user else 120
         current_progress = user["solo_progress"] if user else 0
         
         points_earned = 0
-        transcription_text = result.get("feedback_message", "") # Fallback
         
-        # Verification criteria:
-        # 1. Accept = True
-        # 2. Confidence >= 80
-        # 3. Minimum description length of 8 words
-        raw_text = result.get("feedback_message", "")
-        # ASR text is printed in validate_description, but the json response returns accept/confidence.
-        # Let's get the exact transcribed text.
-        # Since validate_description transcribes internally, let's extract it or use a default.
-        # We can run transcribe_audio or look at validate_description output.
-        # For validation endpoint, validate_description returns a dict with relevance, effort, etc.
-        # We will parse the transcription word count. We can run transcribe_audio again or mock the count.
-        # Actually, let's get the transcription text. To make it 100% robust, let's transcribe first:
         from validate_description import transcribe_audio
         try:
-            transcription_text = transcribe_audio(str(audio_path))
+            transcription_text = transcribe_audio(str(temp_audio_path))
         except Exception:
             transcription_text = "Spontaneous description recorded."
             
         word_count = len(transcription_text.split())
         
-        # Hard threshold check:
-        # 1. AI accept = true
-        # 2. AI confidence >= 80
-        # 3. Word count >= 8 words
         is_fully_valid = (
             result.get("accept", False) and 
             result.get("confidence", 0) >= 80 and 
@@ -246,32 +302,54 @@ async def validate(
         )
         
         if is_fully_valid:
-            # Increment progress towards coin (requires 10 verified descriptions to get 1 Coin)
             current_progress += 1
             if current_progress >= 10:
                 points_earned = 1
                 current_points += 1
                 current_progress = 0
-                
-            # Store in database as approved automatically
             status = 'approved'
         else:
             status = 'pending'
             
         if user:
-            update_user_points_and_progress(username, current_points, current_progress)
+            update_user_points(username, current_points, current_progress)
             
-        # Save to submissions database
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute(
-            """INSERT INTO submissions (username, image_id, transcription, audio_path, dialect, language, agreement_score, consensus_text, status, created_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (username, image_id, transcription_text, f"/uploads/audio/{audio_file_name}", dialect, language, 
-             result.get("confidence", 0), transcription_text, status, datetime.now().isoformat())
-        )
-        conn.commit()
-        conn.close()
+        # Handle audio storage and DB record save based on mode
+        if IS_SUPABASE:
+            # Upload to Cloud Bucket
+            audio_url = supabase_upload_audio(str(temp_audio_path), audio_file_name)
+            # Remove temp file
+            if temp_audio_path.exists():
+                temp_audio_path.unlink()
+                
+            # Insert to Supabase Submissions PostgreSQL
+            sub_url = f"{SUPABASE_URL}/rest/v1/submissions"
+            sub_payload = {
+                "username": username,
+                "image_id": image_id,
+                "transcription": transcription_text,
+                "audio_path": audio_url,
+                "dialect": dialect,
+                "language": language,
+                "agreement_score": result.get("confidence", 0),
+                "consensus_text": transcription_text,
+                "status": status,
+                "created_at": datetime.now().isoformat()
+            }
+            requests.post(sub_url, headers=get_supabase_headers(), json=sub_payload)
+        else:
+            audio_url = f"/uploads/audio/{audio_file_name}"
+            # Insert to local SQLite
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute(
+                """INSERT INTO submissions (username, image_id, transcription, audio_path, dialect, language, agreement_score, consensus_text, status, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (username, image_id, transcription_text, audio_url, dialect, language, 
+                 result.get("confidence", 0), transcription_text, status, datetime.now().isoformat())
+            )
+            conn.commit()
+            conn.close()
         
         return {
             "confidence": result.get("confidence", 0),
@@ -286,39 +364,50 @@ async def validate(
         }
         
     except Exception as e:
-        # Cleanup audio file on exception
-        if audio_path.exists():
-            audio_path.unlink()
+        if temp_audio_path.exists():
+            temp_audio_path.unlink()
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        # Clean up temp image file
         if os.path.exists(image_path):
             os.unlink(image_path)
 
 @app.get("/api/admin/submissions")
 def admin_submissions():
+    if IS_SUPABASE:
+        url = f"{SUPABASE_URL}/rest/v1/submissions?order=id.desc"
+        res = requests.get(url, headers=get_supabase_headers())
+        if res.status_code == 200:
+            return res.json()
+        return []
+
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM submissions ORDER BY id DESC")
     rows = cursor.fetchall()
     conn.close()
-    
     return [dict(row) for row in rows]
 
 @app.post("/api/admin/verify")
 def admin_verify(req: VerifyRequest):
+    if IS_SUPABASE:
+        url = f"{SUPABASE_URL}/rest/v1/submissions?id=eq.{req.submission_id}"
+        payload = {"status": req.status}
+        if req.consensus_text:
+            payload["consensus_text"] = req.consensus_text
+        res = requests.patch(url, headers=get_supabase_headers(), json=payload)
+        if res.status_code not in (200, 204):
+            raise HTTPException(status_code=500, detail=f"Database update failed: {res.text}")
+        return {"message": "Submission verification updated successfully"}
+
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    
-    # Check if submission exists
     cursor.execute("SELECT * FROM submissions WHERE id = ?", (req.submission_id,))
     sub = cursor.fetchone()
     if not sub:
         conn.close()
-        raise HTTPException(status_code=444, detail="Submission not found")
+        raise HTTPException(status_code=404, detail="Submission not found")
         
-    # Update status and consensus text
     if req.consensus_text:
         cursor.execute(
             "UPDATE submissions SET status = ?, consensus_text = ? WHERE id = ?",
@@ -335,22 +424,21 @@ def admin_verify(req: VerifyRequest):
 
 @app.get("/api/health")
 def health():
-    return {"status": "Lexara backend is running"}
+    return {
+        "status": "Lexara backend is running",
+        "database_mode": "Supabase PostgreSQL" if IS_SUPABASE else "Local SQLite"
+    }
 
 
 # WEBSOCKETS MULTIPLAYER ENGINE
 
 class ConnectionManager:
     def __init__(self):
-        # active_connections[room_id] = list of WebSockets
         self.active_connections: Dict[str, List[WebSocket]] = {}
-        # player_profiles[websocket] = { username, language, dialect }
         self.player_profiles: Dict[WebSocket, Dict[str, str]] = {}
-        # rooms[room_id] = { host_username, language, consensus_progress, status, stimulus_id, submissions, votes }
         self.rooms: Dict[str, Dict[str, Any]] = {}
 
     async def connect(self, websocket: WebSocket, room_id: str, username: str, language: str, dialect: str):
-        # Check Room Language / Tribe Constraint
         if room_id in self.rooms:
             expected_lang = self.rooms[room_id]["language"]
             if expected_lang != language:
@@ -364,7 +452,6 @@ class ConnectionManager:
 
         await websocket.accept()
         
-        # Initialize room list if not present
         if room_id not in self.active_connections:
             self.active_connections[room_id] = []
             
@@ -375,7 +462,6 @@ class ConnectionManager:
             "dialect": dialect
         }
         
-        # Initialize room state if first player (Host)
         if room_id not in self.rooms:
             self.rooms[room_id] = {
                 "host": username,
@@ -426,7 +512,6 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str, username: str, 
         return
 
     try:
-        # Broadcast player joining event
         players = manager.get_room_players(room_id)
         room_info = manager.rooms[room_id]
         
@@ -462,19 +547,14 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str, username: str, 
                 })
                 
             elif event["type"] == "speech_submitted":
-                # A player has uploaded audio and received text transcription
                 submission_details = {
                     "username": username,
                     "dialect": dialect,
                     "text": event["text"],
                     "audio_url": event["audio_url"]
                 }
-                
-                # Append to room state submissions
                 room_state["submissions"].append(submission_details)
                 
-                # Check if all players (except host if host is just selecting, or all connections) have submitted
-                # For simplified logic: broadcast immediately as players submit
                 await manager.broadcast(room_id, {
                     "type": "peer_submission",
                     "submissions": room_state["submissions"]
@@ -504,7 +584,6 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str, username: str, 
             elif event["type"] == "suggest_correction":
                 target_user = event["target_user"]
                 corrected_text = event["text"]
-                
                 room_state["corrections"][target_user] = corrected_text
                 
                 await manager.broadcast(room_id, {
@@ -513,47 +592,66 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str, username: str, 
                 })
                 
             elif event["type"] == "commit_consensus":
-                # Platform owner / Host finishes validation voting, makes corrections, and commits
-                # Loop through all submissions and commit approved ones to SQLite
-                final_submissions = event["final_submissions"] # Dict of {username: {approved: bool, text: str}}
-                
-                conn = sqlite3.connect(DB_PATH)
-                cursor = conn.cursor()
+                final_submissions = event["final_submissions"]
                 
                 saved_count = 0
-                for speaker, data_item in final_submissions.items():
-                    if data_item["approved"]:
-                        # Find corresponding submission from room_state
-                        sub_obj = next((s for s in room_state["submissions"] if s["username"] == speaker), None)
-                        if sub_obj:
-                            cursor.execute(
-                                """INSERT INTO submissions (username, image_id, transcription, audio_path, dialect, language, agreement_score, consensus_text, status, created_at)
-                                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'approved', ?)""",
-                                (speaker, room_state["stimulus_id"], sub_obj["text"], sub_obj["audio_url"], sub_obj["dialect"], room_state["language"], 
-                                 100, data_item["text"], datetime.now().isoformat())
-                            )
-                            saved_count += 1
+                if IS_SUPABASE:
+                    sub_url = f"{SUPABASE_URL}/rest/v1/submissions"
+                    for speaker, data_item in final_submissions.items():
+                        if data_item["approved"]:
+                            sub_obj = next((s for s in room_state["submissions"] if s["username"] == speaker), None)
+                            if sub_obj:
+                                payload = {
+                                    "username": speaker,
+                                    "image_id": room_state["stimulus_id"],
+                                    "transcription": sub_obj["text"],
+                                    "audio_path": sub_obj["audio_url"],
+                                    "dialect": sub_obj["dialect"],
+                                    "language": room_state["language"],
+                                    "agreement_score": 100,
+                                    "consensus_text": data_item["text"],
+                                    "status": "approved",
+                                    "created_at": datetime.now().isoformat()
+                                }
+                                requests.post(sub_url, headers=get_supabase_headers(), json=payload)
+                                saved_count += 1
+                else:
+                    conn = sqlite3.connect(DB_PATH)
+                    cursor = conn.cursor()
+                    for speaker, data_item in final_submissions.items():
+                        if data_item["approved"]:
+                            sub_obj = next((s for s in room_state["submissions"] if s["username"] == speaker), None)
+                            if sub_obj:
+                                cursor.execute(
+                                    """INSERT INTO submissions (username, image_id, transcription, audio_path, dialect, language, agreement_score, consensus_text, status, created_at)
+                                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'approved', ?)""",
+                                    (speaker, room_state["stimulus_id"], sub_obj["text"], sub_obj["audio_url"], sub_obj["dialect"], room_state["language"], 
+                                     100, data_item["text"], datetime.now().isoformat())
+                                )
+                                saved_count += 1
+                    conn.commit()
+                    conn.close()
                 
-                conn.commit()
-                conn.close()
-                
-                # Check Consensus Rewards System:
-                # Every 3 successful consensus submissions rewards 1 Coin to ALL players in the room each.
+                # Check consensus points rewards:
                 if saved_count > 0:
                     room_state["consensus_progress"] += 1
                     
                     if room_state["consensus_progress"] >= 3:
-                        # Award 1 Coin to all active players in room in database
                         room_players = manager.get_room_players(room_id)
                         
-                        db_conn = sqlite3.connect(DB_PATH)
-                        db_cursor = db_conn.cursor()
-                        for p in room_players:
-                            db_cursor.execute("UPDATE users SET points = points + 1 WHERE username = ?", (p["username"],))
-                        db_conn.commit()
-                        db_conn.close()
+                        if IS_SUPABASE:
+                            for p in room_players:
+                                p_profile = supabase_get_user(p["username"])
+                                if p_profile:
+                                    supabase_update_user(p["username"], {"points": p_profile["points"] + 1})
+                        else:
+                            db_conn = sqlite3.connect(DB_PATH)
+                            db_cursor = db_conn.cursor()
+                            for p in room_players:
+                                db_cursor.execute("UPDATE users SET points = points + 1 WHERE username = ?", (p["username"],))
+                            db_conn.commit()
+                            db_conn.close()
                         
-                        # Reset progress
                         room_state["consensus_progress"] = 0
                         
                         await manager.broadcast(room_id, {
@@ -561,7 +659,6 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str, username: str, 
                             "message": "Consensus Threshold Cleared! +1 Coin awarded to all participants."
                         })
                 
-                # Reset room state for next card
                 room_state["status"] = "selecting"
                 room_state["stimulus_id"] = ""
                 room_state["submissions"] = []
@@ -576,7 +673,6 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str, username: str, 
 
     except WebSocketDisconnect:
         manager.disconnect(websocket, room_id)
-        # Notify other players
         players = manager.get_room_players(room_id)
         if room_id in manager.rooms:
             room_info = manager.rooms[room_id]
