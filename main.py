@@ -13,6 +13,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+# Try importing psycopg2 for production PostgreSQL
+try:
+    import psycopg2
+    HAS_POSTGRES = True
+except ImportError:
+    HAS_POSTGRES = False
+
 # Initialize FastAPI App
 app = FastAPI()
 
@@ -33,53 +40,131 @@ AUDIO_DIR.mkdir(parents=True, exist_ok=True)
 # Mount uploads folder to serve audio files statically (for local SQLite mode)
 app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
-# Supabase Credentials Configuration (for Stateless Production deployment)
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-IS_SUPABASE = bool(SUPABASE_URL and SUPABASE_KEY)
-
+# DB Mode Configuration
+DATABASE_URL = os.getenv("DATABASE_URL")
+IS_POSTGRES = bool(DATABASE_URL and HAS_POSTGRES)
 DB_PATH = os.getenv("DB_PATH", "lexara_dataset.db")
 
-# Database initialization (only for local SQLite mode)
-def init_local_db():
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS users (
-        username TEXT PRIMARY KEY,
-        password TEXT NOT NULL,
-        language TEXT NOT NULL,
-        dialect TEXT,
-        points INTEGER DEFAULT 120,
-        solo_progress INTEGER DEFAULT 0
-    )
-    """)
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS submissions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT NOT NULL,
-        image_id TEXT NOT NULL,
-        transcription TEXT NOT NULL,
-        audio_path TEXT NOT NULL,
-        dialect TEXT NOT NULL,
-        language TEXT NOT NULL,
-        agreement_score INTEGER DEFAULT 0,
-        consensus_text TEXT,
-        status TEXT DEFAULT 'pending',
-        created_at TEXT NOT NULL
-    )
-    """)
-    cursor.execute("SELECT username FROM users WHERE username = 'vincent.chidiebere@outlook.com'")
-    if not cursor.fetchone():
-        cursor.execute(
-            "INSERT INTO users (username, password, language, dialect, points) VALUES (?, ?, ?, ?, ?)",
-            ("vincent.chidiebere@outlook.com", "Vincent1993#", "Igbo", "Onitsha", 500)
-        )
-    conn.commit()
-    conn.close()
+# Cloud Audio Storage (Cloudinary vs Supabase fallback vs Local)
+CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME")
+CLOUDINARY_PRESET = os.getenv("CLOUDINARY_PRESET")
+IS_CLOUDINARY = bool(CLOUDINARY_CLOUD_NAME and CLOUDINARY_PRESET)
 
-if not IS_SUPABASE:
-    init_local_db()
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+IS_SUPABASE_STORAGE = bool(SUPABASE_URL and SUPABASE_KEY)
+
+# Unified Query Executor & Database abstraction
+def get_db_connection():
+    if IS_POSTGRES:
+        return psycopg2.connect(DATABASE_URL)
+    else:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        return conn
+
+def execute_query(query: str, params: tuple = ()):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # SQLite uses '?' placeholder, PostgreSQL uses '%s'
+    if not IS_POSTGRES:
+        query = query.replace("%s", "?")
+        
+    cursor.execute(query, params)
+    
+    rows = None
+    if query.strip().upper().startswith("SELECT"):
+        if IS_POSTGRES:
+            colnames = [desc[0] for desc in cursor.description]
+            rows = [dict(zip(colnames, row)) for row in cursor.fetchall()]
+        else:
+            rows = [dict(row) for row in cursor.fetchall()]
+    else:
+        conn.commit()
+        
+    conn.close()
+    return rows
+
+# Initialize DB structure
+def init_db():
+    if IS_POSTGRES:
+        # Create Postgres tables if they do not exist
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            username VARCHAR(255) PRIMARY KEY,
+            password VARCHAR(255) NOT NULL,
+            language VARCHAR(255) NOT NULL,
+            dialect VARCHAR(255),
+            points INTEGER DEFAULT 120,
+            solo_progress INTEGER DEFAULT 0
+        )
+        """)
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS submissions (
+            id SERIAL PRIMARY KEY,
+            username VARCHAR(255) NOT NULL,
+            image_id VARCHAR(255) NOT NULL,
+            transcription TEXT NOT NULL,
+            audio_path TEXT NOT NULL,
+            dialect VARCHAR(255) NOT NULL,
+            language VARCHAR(255) NOT NULL,
+            agreement_score INTEGER DEFAULT 0,
+            consensus_text TEXT,
+            status VARCHAR(50) DEFAULT 'pending',
+            created_at VARCHAR(255) NOT NULL
+        )
+        """)
+        # Seed default admin user
+        cursor.execute("SELECT username FROM users WHERE username = %s", ("vincent.chidiebere@outlook.com",))
+        if not cursor.fetchone():
+            cursor.execute(
+                "INSERT INTO users (username, password, language, dialect, points) VALUES (%s, %s, %s, %s, %s)",
+                ("vincent.chidiebere@outlook.com", "Vincent1993#", "Igbo", "Onitsha", 500)
+            )
+        conn.commit()
+        conn.close()
+    else:
+        # Initialize SQLite tables
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            username TEXT PRIMARY KEY,
+            password TEXT NOT NULL,
+            language TEXT NOT NULL,
+            dialect TEXT,
+            points INTEGER DEFAULT 120,
+            solo_progress INTEGER DEFAULT 0
+        )
+        """)
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS submissions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            image_id TEXT NOT NULL,
+            transcription TEXT NOT NULL,
+            audio_path TEXT NOT NULL,
+            dialect TEXT NOT NULL,
+            language TEXT NOT NULL,
+            agreement_score INTEGER DEFAULT 0,
+            consensus_text TEXT,
+            status TEXT DEFAULT 'pending',
+            created_at TEXT NOT NULL
+        )
+        """)
+        cursor.execute("SELECT username FROM users WHERE username = 'vincent.chidiebere@outlook.com'")
+        if not cursor.fetchone():
+            cursor.execute(
+                "INSERT INTO users (username, password, language, dialect, points) VALUES (?, ?, ?, ?, ?)",
+                ("vincent.chidiebere@outlook.com", "Vincent1993#", "Igbo", "Onitsha", 500)
+            )
+        conn.commit()
+        conn.close()
+
+init_db()
 
 # Models
 class SignupRequest(BaseModel):
@@ -98,30 +183,22 @@ class VerifyRequest(BaseModel):
     consensus_text: str = None
 
 
-# SUPABASE REST API UTILITIES
+# CLOUD UPLOAD UTILITIES
 
-def get_supabase_headers():
-    return {
-        "apikey": SUPABASE_KEY,
-        "Authorization": f"Bearer {SUPABASE_KEY}",
-        "Content-Type": "application/json",
-        "Prefer": "return=representation"
-    }
+def upload_audio_to_cloudinary(file_path: str, file_name: str) -> str:
+    url = f"https://api.cloudinary.com/v1_1/{CLOUDINARY_CLOUD_NAME}/raw/upload"
+    with open(file_path, "rb") as f:
+        file_data = f.read()
+    res = requests.post(
+        url,
+        data={"upload_preset": CLOUDINARY_PRESET, "public_id": file_name},
+        files={"file": (file_name, file_data, "audio/wav")}
+    )
+    if res.status_code not in (200, 201):
+        raise Exception(f"Cloudinary upload failed: {res.text}")
+    return res.json()["secure_url"]
 
-def supabase_get_user(username: str):
-    url = f"{SUPABASE_URL}/rest/v1/users?username=eq.{username}"
-    res = requests.get(url, headers=get_supabase_headers())
-    if res.status_code == 200:
-        users = res.json()
-        return users[0] if users else None
-    return None
-
-def supabase_update_user(username: str, data: dict):
-    url = f"{SUPABASE_URL}/rest/v1/users?username=eq.{username}"
-    requests.patch(url, headers=get_supabase_headers(), json=data)
-
-def supabase_upload_audio(file_path: str, file_name: str) -> str:
-    # Upload to Supabase Storage Bucket named 'lexara-audio'
+def upload_audio_to_supabase(file_path: str, file_name: str) -> str:
     url = f"{SUPABASE_URL}/storage/v1/object/lexara-audio/{file_name}"
     headers = {
         "apikey": SUPABASE_KEY,
@@ -133,85 +210,39 @@ def supabase_upload_audio(file_path: str, file_name: str) -> str:
     res = requests.post(url, headers=headers, data=file_data)
     if res.status_code not in (200, 201):
         raise Exception(f"Supabase storage upload failed: {res.text}")
-    # Return the public URL
     return f"{SUPABASE_URL}/storage/v1/object/public/lexara-audio/{file_name}"
 
-
-# DUAL MODE DATABASE ACCESSORS
-
-def get_user_profile(username: str):
-    if IS_SUPABASE:
-        return supabase_get_user(username)
-    
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
-    user = cursor.fetchone()
-    conn.close()
-    return dict(user) if user else None
-
-def update_user_points(username: str, points: int, progress: int):
-    if IS_SUPABASE:
-        supabase_update_user(username, {"points": points, "solo_progress": progress})
-        return
-    
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute(
-        "UPDATE users SET points = ?, solo_progress = ? WHERE username = ?",
-        (points, progress, username)
-    )
-    conn.commit()
-    conn.close()
+def upload_file_handler(temp_path: str, file_name: str) -> str:
+    if IS_CLOUDINARY:
+        return upload_audio_to_cloudinary(temp_path, file_name)
+    elif IS_SUPABASE_STORAGE:
+        return upload_audio_to_supabase(temp_path, file_name)
+    else:
+        return f"/uploads/audio/{file_name}"
 
 
 # REST ENDPOINTS
 
 @app.post("/api/signup")
 def signup(req: SignupRequest):
-    if IS_SUPABASE:
-        # Check if user exists
-        existing = supabase_get_user(req.username)
-        if existing:
-            raise HTTPException(status_code=400, detail="Username already exists")
-        
-        # Insert to Supabase Postgres
-        url = f"{SUPABASE_URL}/rest/v1/users"
-        payload = {
-            "username": req.username,
-            "password": req.password,
-            "language": req.language,
-            "dialect": req.dialect if req.dialect else None,
-            "points": 120,
-            "solo_progress": 0
-        }
-        res = requests.post(url, headers=get_supabase_headers(), json=payload)
-        if res.status_code not in (200, 201):
-            raise HTTPException(status_code=500, detail=f"Database error: {res.text}")
-        return {"message": "Signup successful", "username": req.username}
-
-    # SQLite Fallback Mode
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("SELECT username FROM users WHERE username = ?", (req.username,))
-    if cursor.fetchone():
-        conn.close()
+    # Check if user exists
+    users = execute_query("SELECT username FROM users WHERE username = %s", (req.username,))
+    if users:
         raise HTTPException(status_code=400, detail="Username already exists")
-    cursor.execute(
-        "INSERT INTO users (username, password, language, dialect, points, solo_progress) VALUES (?, ?, ?, ?, 120, 0)",
+        
+    execute_query(
+        "INSERT INTO users (username, password, language, dialect, points, solo_progress) VALUES (%s, %s, %s, %s, 120, 0)",
         (req.username, req.password, req.language, req.dialect if req.dialect else None)
     )
-    conn.commit()
-    conn.close()
     return {"message": "Signup successful", "username": req.username}
 
 @app.post("/api/login")
 def login(req: LoginRequest):
-    user = get_user_profile(req.username)
-    if not user or user["password"] != req.password:
+    users = execute_query("SELECT * FROM users WHERE username = %s", (req.username,))
+    if not users or users[0]["password"] != req.password:
         raise HTTPException(status_code=401, detail="Invalid username or password")
         
+    user = users[0]
     return {
         "username": user["username"],
         "language": user["language"],
@@ -222,7 +253,6 @@ def login(req: LoginRequest):
 
 @app.post("/api/upload-audio")
 async def upload_audio(audio: UploadFile = File(...)):
-    # Save audio file temporarily
     file_ext = os.path.splitext(audio.filename)[1] if audio.filename else ".wav"
     file_name = f"{uuid.uuid4()}{file_ext}"
     temp_path = AUDIO_DIR / file_name
@@ -230,19 +260,14 @@ async def upload_audio(audio: UploadFile = File(...)):
     with open(temp_path, "wb") as buffer:
         buffer.write(await audio.read())
         
-    # Transcribe audio using Whisper
     from validate_description import transcribe_audio
     try:
         text = transcribe_audio(str(temp_path))
+        audio_url = upload_file_handler(str(temp_path), file_name)
         
-        if IS_SUPABASE:
-            # Upload to Cloud Bucket and get public link, then remove local temp
-            audio_url = supabase_upload_audio(str(temp_path), file_name)
-            if temp_path.exists():
-                temp_path.unlink()
-        else:
-            # Leave local file and return local mount link
-            audio_url = f"/uploads/audio/{file_name}"
+        # Cleanup temp file if uploaded to cloud
+        if (IS_CLOUDINARY or IS_SUPABASE_STORAGE) and temp_path.exists():
+            temp_path.unlink()
             
     except Exception as e:
         if temp_path.exists():
@@ -263,7 +288,6 @@ async def validate(
     username: str = Form(...),
     image_id: str = Form(...)
 ):
-    # Save uploaded files temporarily
     file_ext = os.path.splitext(audio.filename)[1] if audio.filename else ".wav"
     audio_file_name = f"{uuid.uuid4()}{file_ext}"
     temp_audio_path = AUDIO_DIR / audio_file_name
@@ -276,12 +300,12 @@ async def validate(
         image_path = tmp_image.name
 
     try:
-        # Load API keys and run validation
         from validate_description import validate_description
         result = validate_description(image_path, str(temp_audio_path), language)
         
-        # Pull player current state from db
-        user = get_user_profile(username)
+        users = execute_query("SELECT * FROM users WHERE username = %s", (username,))
+        user = users[0] if users else None
+        
         current_points = user["points"] if user else 120
         current_progress = user["solo_progress"] if user else 0
         
@@ -312,44 +336,23 @@ async def validate(
             status = 'pending'
             
         if user:
-            update_user_points(username, current_points, current_progress)
-            
-        # Handle audio storage and DB record save based on mode
-        if IS_SUPABASE:
-            # Upload to Cloud Bucket
-            audio_url = supabase_upload_audio(str(temp_audio_path), audio_file_name)
-            # Remove temp file
-            if temp_audio_path.exists():
-                temp_audio_path.unlink()
-                
-            # Insert to Supabase Submissions PostgreSQL
-            sub_url = f"{SUPABASE_URL}/rest/v1/submissions"
-            sub_payload = {
-                "username": username,
-                "image_id": image_id,
-                "transcription": transcription_text,
-                "audio_path": audio_url,
-                "dialect": dialect,
-                "language": language,
-                "agreement_score": result.get("confidence", 0),
-                "consensus_text": transcription_text,
-                "status": status,
-                "created_at": datetime.now().isoformat()
-            }
-            requests.post(sub_url, headers=get_supabase_headers(), json=sub_payload)
-        else:
-            audio_url = f"/uploads/audio/{audio_file_name}"
-            # Insert to local SQLite
-            conn = sqlite3.connect(DB_PATH)
-            cursor = conn.cursor()
-            cursor.execute(
-                """INSERT INTO submissions (username, image_id, transcription, audio_path, dialect, language, agreement_score, consensus_text, status, created_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (username, image_id, transcription_text, audio_url, dialect, language, 
-                 result.get("confidence", 0), transcription_text, status, datetime.now().isoformat())
+            execute_query(
+                "UPDATE users SET points = %s, solo_progress = %s WHERE username = %s",
+                (current_points, current_progress, username)
             )
-            conn.commit()
-            conn.close()
+            
+        audio_url = upload_file_handler(str(temp_audio_path), audio_file_name)
+        
+        # Cleanup local audio file if uploaded to cloud
+        if (IS_CLOUDINARY or IS_SUPABASE_STORAGE) and temp_audio_path.exists():
+            temp_audio_path.unlink()
+            
+        execute_query(
+            """INSERT INTO submissions (username, image_id, transcription, audio_path, dialect, language, agreement_score, consensus_text, status, created_at)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+            (username, image_id, transcription_text, audio_url, dialect, language, 
+             result.get("confidence", 0), transcription_text, status, datetime.now().isoformat())
+        )
         
         return {
             "confidence": result.get("confidence", 0),
@@ -373,60 +376,32 @@ async def validate(
 
 @app.get("/api/admin/submissions")
 def admin_submissions():
-    if IS_SUPABASE:
-        url = f"{SUPABASE_URL}/rest/v1/submissions?order=id.desc"
-        res = requests.get(url, headers=get_supabase_headers())
-        if res.status_code == 200:
-            return res.json()
-        return []
-
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM submissions ORDER BY id DESC")
-    rows = cursor.fetchall()
-    conn.close()
-    return [dict(row) for row in rows]
+    return execute_query("SELECT * FROM submissions ORDER BY id DESC")
 
 @app.post("/api/admin/verify")
 def admin_verify(req: VerifyRequest):
-    if IS_SUPABASE:
-        url = f"{SUPABASE_URL}/rest/v1/submissions?id=eq.{req.submission_id}"
-        payload = {"status": req.status}
-        if req.consensus_text:
-            payload["consensus_text"] = req.consensus_text
-        res = requests.patch(url, headers=get_supabase_headers(), json=payload)
-        if res.status_code not in (200, 204):
-            raise HTTPException(status_code=500, detail=f"Database update failed: {res.text}")
-        return {"message": "Submission verification updated successfully"}
-
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM submissions WHERE id = ?", (req.submission_id,))
-    sub = cursor.fetchone()
-    if not sub:
-        conn.close()
+    subs = execute_query("SELECT * FROM submissions WHERE id = %s", (req.submission_id,))
+    if not subs:
         raise HTTPException(status_code=404, detail="Submission not found")
         
     if req.consensus_text:
-        cursor.execute(
-            "UPDATE submissions SET status = ?, consensus_text = ? WHERE id = ?",
+        execute_query(
+            "UPDATE submissions SET status = %s, consensus_text = %s WHERE id = %s",
             (req.status, req.consensus_text, req.submission_id)
         )
     else:
-        cursor.execute(
-            "UPDATE submissions SET status = ? WHERE id = ?",
+        execute_query(
+            "UPDATE submissions SET status = %s WHERE id = %s",
             (req.status, req.submission_id)
         )
-    conn.commit()
-    conn.close()
     return {"message": "Submission verification updated successfully"}
 
 @app.get("/api/health")
 def health():
     return {
         "status": "Lexara backend is running",
-        "database_mode": "Supabase PostgreSQL" if IS_SUPABASE else "Local SQLite"
+        "database_mode": "PostgreSQL Cloud" if IS_POSTGRES else "Local SQLite",
+        "audio_storage_mode": "Cloudinary" if IS_CLOUDINARY else "Supabase" if IS_SUPABASE_STORAGE else "Local static directory"
     }
 
 
@@ -595,42 +570,17 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str, username: str, 
                 final_submissions = event["final_submissions"]
                 
                 saved_count = 0
-                if IS_SUPABASE:
-                    sub_url = f"{SUPABASE_URL}/rest/v1/submissions"
-                    for speaker, data_item in final_submissions.items():
-                        if data_item["approved"]:
-                            sub_obj = next((s for s in room_state["submissions"] if s["username"] == speaker), None)
-                            if sub_obj:
-                                payload = {
-                                    "username": speaker,
-                                    "image_id": room_state["stimulus_id"],
-                                    "transcription": sub_obj["text"],
-                                    "audio_path": sub_obj["audio_url"],
-                                    "dialect": sub_obj["dialect"],
-                                    "language": room_state["language"],
-                                    "agreement_score": 100,
-                                    "consensus_text": data_item["text"],
-                                    "status": "approved",
-                                    "created_at": datetime.now().isoformat()
-                                }
-                                requests.post(sub_url, headers=get_supabase_headers(), json=payload)
-                                saved_count += 1
-                else:
-                    conn = sqlite3.connect(DB_PATH)
-                    cursor = conn.cursor()
-                    for speaker, data_item in final_submissions.items():
-                        if data_item["approved"]:
-                            sub_obj = next((s for s in room_state["submissions"] if s["username"] == speaker), None)
-                            if sub_obj:
-                                cursor.execute(
-                                    """INSERT INTO submissions (username, image_id, transcription, audio_path, dialect, language, agreement_score, consensus_text, status, created_at)
-                                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'approved', ?)""",
-                                    (speaker, room_state["stimulus_id"], sub_obj["text"], sub_obj["audio_url"], sub_obj["dialect"], room_state["language"], 
-                                     100, data_item["text"], datetime.now().isoformat())
-                                )
-                                saved_count += 1
-                    conn.commit()
-                    conn.close()
+                for speaker, data_item in final_submissions.items():
+                    if data_item["approved"]:
+                        sub_obj = next((s for s in room_state["submissions"] if s["username"] == speaker), None)
+                        if sub_obj:
+                            execute_query(
+                                """INSERT INTO submissions (username, image_id, transcription, audio_path, dialect, language, agreement_score, consensus_text, status, created_at)
+                                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'approved', ?)""",
+                                (speaker, room_state["stimulus_id"], sub_obj["text"], sub_obj["audio_url"], sub_obj["dialect"], room_state["language"], 
+                                 100, data_item["text"], datetime.now().isoformat())
+                            )
+                            saved_count += 1
                 
                 # Check consensus points rewards:
                 if saved_count > 0:
@@ -638,19 +588,8 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str, username: str, 
                     
                     if room_state["consensus_progress"] >= 3:
                         room_players = manager.get_room_players(room_id)
-                        
-                        if IS_SUPABASE:
-                            for p in room_players:
-                                p_profile = supabase_get_user(p["username"])
-                                if p_profile:
-                                    supabase_update_user(p["username"], {"points": p_profile["points"] + 1})
-                        else:
-                            db_conn = sqlite3.connect(DB_PATH)
-                            db_cursor = db_conn.cursor()
-                            for p in room_players:
-                                db_cursor.execute("UPDATE users SET points = points + 1 WHERE username = ?", (p["username"],))
-                            db_conn.commit()
-                            db_conn.close()
+                        for p in room_players:
+                            execute_query("UPDATE users SET points = points + 1 WHERE username = %s", (p["username"],))
                         
                         room_state["consensus_progress"] = 0
                         
