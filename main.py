@@ -472,6 +472,17 @@ def get_leaderboard():
     )
     return results or []
 
+@app.get("/api/bridge/{image_id}")
+def get_bridge_data(image_id: str):
+    # Fetch all approved submissions for this image_id to allow dynamic dialect comparisons
+    results = execute_query(
+        """SELECT dialect, consensus_text, username 
+           FROM submissions 
+           WHERE image_id = %s AND status = 'approved'""",
+        (image_id,)
+    )
+    return results or []
+
 # WEBSOCKETS MULTIPLAYER ENGINE
 
 class ConnectionManager:

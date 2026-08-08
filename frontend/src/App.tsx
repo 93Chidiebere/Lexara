@@ -77,6 +77,9 @@ export default function App() {
   const [multiplayerNotify, setMultiplayerNotify] = useState<string>("");
   const wsRef = useRef<WebSocket | null>(null);
 
+  const activeStimulus = STIMULI[activeStimulusIndex];
+  const activeWsStimulus = STIMULI.find(s => s.id === wsStimulusId) || STIMULI[0];
+
   // Admin Dashboard State
   const [adminSubmissions, setAdminSubmissions] = useState<any[]>([]);
   const [adminFilter, setAdminFilter] = useState<string>("all");
@@ -621,6 +624,58 @@ export default function App() {
     }
   }, [currentScreen]);
 
+  const [bridgeData, setBridgeData] = useState<any[]>([]);
+  const [sourceDialect, setSourceDialect] = useState<string>("");
+  const [targetDialect, setTargetDialect] = useState<string>("");
+
+  const fetchBridgeData = async (imageId: string) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/bridge/${imageId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setBridgeData(data);
+      }
+    } catch (e) {}
+  };
+
+  useEffect(() => {
+    if (currentScreen === "bridge") {
+      fetchBridgeData(activeStimulus.id);
+    }
+  }, [currentScreen, activeStimulusIndex]);
+
+  const availableDialects = Array.from(new Set([
+    ...Object.keys(activeStimulus.dialectsData || {}),
+    ...bridgeData.map(item => item.dialect)
+  ])).filter(Boolean);
+
+  useEffect(() => {
+    if (availableDialects.length > 0) {
+      if (!sourceDialect || !availableDialects.includes(sourceDialect)) {
+        setSourceDialect(availableDialects[0]);
+      }
+      if (!targetDialect || !availableDialects.includes(targetDialect) || targetDialect === sourceDialect) {
+        setTargetDialect(availableDialects[1] || availableDialects[0] || "");
+      }
+    } else {
+      setSourceDialect("");
+      setTargetDialect("");
+    }
+  }, [bridgeData, activeStimulusIndex]);
+
+  const getTranslationText = (dial: string) => {
+    if (!dial) return { text: "No dialect chosen.", source: "" };
+    const dbMatch = bridgeData.find(item => item.dialect.toLowerCase() === dial.toLowerCase());
+    if (dbMatch) {
+      return { text: dbMatch.consensus_text, source: `Verified Contributor: ${dbMatch.username}` };
+    }
+    const staticMatch = activeStimulus.dialectsData?.[dial];
+    if (staticMatch) {
+      return { text: staticMatch.audioMockText, source: "Linguistic Template Reference" };
+    }
+    return { text: "No translation entry recorded yet for this dialect on this card.", source: "" };
+  };
+
   const verifySubmission = async (id: number, status: "approved" | "rejected", consensusText?: string) => {
     try {
       const res = await fetch(`${API_BASE}/api/admin/verify`, {
@@ -644,9 +699,6 @@ export default function App() {
   const handleImageError = (id: string) => {
     setImageErrors((prev) => ({ ...prev, [id]: true }));
   };
-
-  const activeStimulus = STIMULI[activeStimulusIndex];
-  const activeWsStimulus = STIMULI.find(s => s.id === wsStimulusId) || STIMULI[0];
 
   return (
     <div className="app-container">
@@ -1683,47 +1735,93 @@ export default function App() {
         {/* SCREEN 6: LINGUISTIC DIALECT BRIDGE */}
         {isRegistered && currentScreen === "bridge" && (
           <div className="slide-up" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            <h2 style={{ fontSize: "20px" }}>Dialect Bridge</h2>
-            <p style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "-6px" }}>
-              Explore how words and orthography shift across Igbo, Yoruba, and Swahili dialects.
-            </p>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <h2 style={{ fontSize: "20px", color: "var(--color-gold)" }}>Dialect Bridge</h2>
+                <p style={{ fontSize: "11px", color: "var(--text-secondary)", marginTop: "2px" }}>
+                  Compare orthography shifts across dialects and tribes.
+                </p>
+              </div>
+              <div style={{ display: "flex", gap: "6px" }}>
+                <button className="btn-skip" onClick={prevStimulus} style={{ padding: "4px 8px" }}>Prev</button>
+                <button className="btn-skip" onClick={nextStimulus} style={{ padding: "4px 8px" }}>Next</button>
+              </div>
+            </div>
+
+            {/* Stimulus Card info */}
+            <div className="glass-card" style={{ padding: "12px", display: "flex", gap: "12px", alignItems: "center" }}>
+              <img 
+                src={activeStimulus.imageUrl.startsWith("http") ? activeStimulus.imageUrl : activeStimulus.imageUrl}
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1508213981460-0722d4f215d1?auto=format&fit=crop&w=600&q=80";
+                }}
+                alt="Stimulus" 
+                style={{ width: "60px", height: "60px", borderRadius: "6px", objectFit: "cover" }} 
+              />
+              <div>
+                <span style={{ fontSize: "10px", color: "var(--color-gold)", textTransform: "uppercase", fontWeight: "600" }}>{activeStimulus.category}</span>
+                <h4 style={{ fontSize: "14px", color: "white" }}>{activeStimulus.title}</h4>
+              </div>
+            </div>
+
             <div className="glass-card" style={{ padding: "16px" }}>
               <div style={{ display: "flex", gap: "10px", marginBottom: "16px" }}>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: "block", fontSize: "11px", color: "var(--text-secondary)", marginBottom: "4px" }}>Source Dialect</label>
-                  <select className="form-input" defaultValue="Abiriba">
-                    <option>Abiriba</option>
-                    <option>Onitsha</option>
-                    <option>Owerri</option>
-                    <option>Nsukka</option>
+                  <select 
+                    className="form-input" 
+                    value={sourceDialect}
+                    onChange={(e) => setSourceDialect(e.target.value)}
+                  >
+                    {availableDialects.map(d => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
                   </select>
                 </div>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: "block", fontSize: "11px", color: "var(--text-secondary)", marginBottom: "4px" }}>Target Dialect</label>
-                  <select className="form-input" defaultValue="Owerri">
-                    <option>Abiriba</option>
-                    <option>Onitsha</option>
-                    <option>Owerri</option>
-                    <option>Nsukka</option>
+                  <select 
+                    className="form-input" 
+                    value={targetDialect}
+                    onChange={(e) => setTargetDialect(e.target.value)}
+                  >
+                    {availableDialects.map(d => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
                   </select>
                 </div>
               </div>
 
               <div style={{ background: "#16171A", padding: "12px", borderRadius: "6px", border: "1px solid var(--border-subtle)" }}>
-                <p style={{ fontSize: "12px", color: "var(--text-secondary)" }}>Selected Stimulus: {activeStimulus.title}</p>
-                <div style={{ marginTop: "10px", display: "flex", flexDirection: "column", gap: "10px" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                   <div>
-                    <span style={{ fontSize: "10px", textTransform: "uppercase", color: "var(--primary)" }}>Source Text (Abiriba)</span>
-                    <p style={{ fontSize: "14px", fontStyle: "italic", marginTop: "2px" }}>
-                      "{activeStimulus.dialectsData?.["Abiriba"]?.audioMockText || "No metadata entry for this dialect."}"
+                    <span style={{ fontSize: "10px", textTransform: "uppercase", color: "var(--color-gold)" }}>
+                      Source Text ({sourceDialect || "None"})
+                    </span>
+                    <p style={{ fontSize: "14px", fontStyle: "italic", marginTop: "2px", color: "white" }}>
+                      "{getTranslationText(sourceDialect).text}"
                     </p>
+                    {getTranslationText(sourceDialect).source && (
+                      <span style={{ fontSize: "9px", color: "var(--text-secondary)" }}>
+                        Origin: {getTranslationText(sourceDialect).source}
+                      </span>
+                    )}
                   </div>
+                  
                   <hr style={{ border: "none", borderTop: "1px dashed var(--border-subtle)" }} />
+                  
                   <div>
-                    <span style={{ fontSize: "10px", textTransform: "uppercase", color: "var(--success)" }}>Target Translation (Owerri)</span>
-                    <p style={{ fontSize: "14px", fontStyle: "italic", marginTop: "2px" }}>
-                      "{activeStimulus.dialectsData?.["Owerri"]?.audioMockText || "No metadata entry for this dialect."}"
+                    <span style={{ fontSize: "10px", textTransform: "uppercase", color: "var(--success)" }}>
+                      Target Text ({targetDialect || "None"})
+                    </span>
+                    <p style={{ fontSize: "14px", fontStyle: "italic", marginTop: "2px", color: "white" }}>
+                      "{getTranslationText(targetDialect).text}"
                     </p>
+                    {getTranslationText(targetDialect).source && (
+                      <span style={{ fontSize: "9px", color: "var(--text-secondary)" }}>
+                        Origin: {getTranslationText(targetDialect).source}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
