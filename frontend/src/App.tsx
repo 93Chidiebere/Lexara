@@ -1114,17 +1114,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* Solo Progress Tracker */}
-            <div className="glass-card" style={{ padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <Award size={16} color="var(--primary)" />
-                <span style={{ fontSize: "13px", fontWeight: "600" }}>Solo Coin Progress: {soloProgress} / 10 verified descriptions</span>
-              </div>
-              <div style={{ width: "120px", background: "#2A2B2F", height: "6px", borderRadius: "3px", overflow: "hidden" }}>
-                <div style={{ width: `${soloProgress * 10}%`, background: "var(--primary)", height: "100%", transition: "width 0.3s ease" }}></div>
-              </div>
-            </div>
-
             {/* Mic / Audio Panel */}
             <div className="glass-card mic-panel" style={{ padding: "20px", textAlign: "center" }}>
               {errorMsg && (
@@ -1731,6 +1720,17 @@ export default function App() {
               <p style={{ color: "var(--primary)", fontSize: "14px", fontWeight: "600", marginTop: "4px" }}>
                 Valued at: ₦{points}.00 NGN (1 Coin = ₦1.00 Naira)
               </p>
+            </div>
+
+            {/* Solo Progress Tracker */}
+            <div className="glass-card" style={{ padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <Award size={16} color="var(--primary)" />
+                <span style={{ fontSize: "13px", fontWeight: "600" }}>Solo Coin Progress: {soloProgress} / 10 verified descriptions</span>
+              </div>
+              <div style={{ width: "120px", background: "var(--bg-dark)", height: "6px", borderRadius: "3px", overflow: "hidden" }}>
+                <div style={{ width: `${soloProgress * 10}%`, background: "var(--primary)", height: "100%", transition: "width 0.3s ease" }}></div>
+              </div>
             </div>
 
             <div className="glass-card" style={{ padding: "20px" }}>
