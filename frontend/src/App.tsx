@@ -1100,7 +1100,6 @@ export default function App() {
                     onError={() => handleImageError(activeStimulus.id)}
                   />
                 )}
-                <span className="category-tag">{activeStimulus.category}</span>
               </div>
 
               <div style={{ padding: "16px" }}>
