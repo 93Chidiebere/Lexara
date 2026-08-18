@@ -129,6 +129,7 @@ body {
   color: var(--text-primary);
   border: 1px solid var(--border-subtle);
   box-shadow: var(--shadow-sm);
+  flex-shrink: 0;
 }
 
 .user-status-badge.points {
@@ -674,4 +675,37 @@ h1, h2, h3, h4 {
 .form-input:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(46, 90, 54, 0.1);
+}
+
+/* Responsive adjustments for mobile and tablets */
+@media (max-width: 768px) {
+  body {
+    padding: 0 !important;
+    background-color: #FAFAF8 !important;
+  }
+
+  .app-container {
+    max-width: none !important;
+    height: 100vh !important;
+    min-height: 100vh !important;
+    border-radius: 0 !important;
+    border: none !important;
+  }
+
+  .app-header {
+    padding: 12px 16px !important;
+  }
+
+  .app-content {
+    padding: 12px 14px !important;
+    gap: 12px !important;
+  }
+
+  .glass-card {
+    padding: 12px 14px !important;
+  }
+
+  .image-container {
+    aspect-ratio: 16/9 !important;
+  }
 }

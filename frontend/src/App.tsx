@@ -1008,21 +1008,34 @@ export default function App() {
         {/* SCREEN 2: SOLO PLAY MODE */}
         {isRegistered && currentScreen === "solo" && (
           <div className="slide-up" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <h2 style={{ fontSize: "20px" }}>Solo Mode</h2>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "2px" }}>
-                  <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
-                    Active Dialect:
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px", borderBottom: "1px solid var(--border-subtle)", paddingBottom: "12px" }}>
+              {/* Row 1: Title and Actions */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <h2 style={{ fontSize: "20px", color: "var(--primary)", margin: 0 }}>Solo Mode</h2>
+                <div style={{ display: "flex", gap: "6px" }}>
+                  <button className="btn-skip" onClick={prevStimulus} style={{ padding: "4px 10px" }}>
+                    Prev
+                  </button>
+                  <button className="btn-skip" onClick={nextStimulus} style={{ padding: "4px 10px" }}>
+                    Next
+                  </button>
+                </div>
+              </div>
+
+              {/* Row 2: Dialect selector and status badge */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <span style={{ fontSize: "11.5px", color: "var(--text-secondary)", fontWeight: "500" }}>
+                    Dialect:
                   </span>
                   {((LANGUAGES_AND_DIALECTS as any)[language] || []).length > 0 ? (
                     <select 
                       value={activeDialect} 
                       onChange={(e) => setActiveDialect(e.target.value)}
                       className="form-input"
-                      style={{ padding: "2px 8px", fontSize: "11px", width: "auto", display: "inline-block" }}
+                      style={{ padding: "3px 8px", fontSize: "11px", width: "auto", height: "26px", display: "inline-block" }}
                     >
-                      <option value="">Choose Dialect (Or skip)</option>
+                      <option value="">Choose Dialect</option>
                       {((LANGUAGES_AND_DIALECTS as any)[language] || []).map((d: string) => (
                         <option key={d} value={d}>{d}</option>
                       ))}
@@ -1034,7 +1047,7 @@ export default function App() {
                       onChange={(e) => setActiveDialect(e.target.value)}
                       placeholder="Type Dialect"
                       className="form-input"
-                      style={{ padding: "2px 8px", fontSize: "11px", width: "100px", display: "inline-block" }}
+                      style={{ padding: "3px 8px", fontSize: "11px", width: "90px", height: "26px", display: "inline-block" }}
                     />
                   )}
                   <span 
@@ -1043,32 +1056,24 @@ export default function App() {
                       setCurrentScreen("onboarding");
                     }} 
                     style={{ 
-                      color: "var(--text-primary)", 
+                      color: "var(--primary)", 
                       textDecoration: "underline", 
                       cursor: "pointer", 
                       fontSize: "11px",
-                      fontWeight: "500",
+                      fontWeight: "600",
                       marginLeft: "4px"
                     }}
                   >
                     Change Language
                   </span>
                 </div>
-              </div>
 
-              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <button className="btn-skip" onClick={prevStimulus} style={{ padding: "4px 8px" }}>
-                  Prev
-                </button>
-                <button className="btn-skip" onClick={nextStimulus} style={{ padding: "4px 8px" }}>
-                  Next
-                </button>
                 <span className={`status-pill ${backendStatus}`} style={{
                   fontSize: "10px",
                   padding: "3px 8px",
                   borderRadius: "4px",
                   border: "1px solid var(--border-subtle)",
-                  backgroundColor: "#16171A",
+                  backgroundColor: "var(--bg-card)",
                   color: "var(--text-secondary)",
                   fontWeight: "500",
                   textTransform: "uppercase",
