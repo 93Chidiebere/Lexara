@@ -245,37 +245,11 @@ export const LANGUAGES_AND_DIALECTS = {
     "Fante",
     "Bono"
   ],
-  "Efik / Ibibio": [
-    "Calabar",
-    "Uyo",
-    "Oron",
-    "Eket"
-  ],
-  "Swahili (Kiswahili)": [
-    "Kiunguja (Standard)",
-    "Kimvita",
-    "Kiamu",
-    "Kingwana"
-  ],
-  "Amharic": [
-    "Addis Ababa (Standard)",
-    "Gojjam",
-    "Gondar",
-    "Wollo"
-  ],
-  "Zulu (isiZulu)": [
-    "KwaZulu-Natal (Standard)",
-    "Transvaal",
-    "Qwabe"
-  ],
-  "Wolof": [
-    "Dakar (Standard)",
-    "Saint-Louis",
-    "Baol"
-  ],
-  "Xhosa (isiXhosa)": [
-    "Gcaleka (Standard)",
-    "Thembu",
-    "Mpondo"
+  "Others (Efik, Ibibio, Jukun)": [
+    "Efik (Calabar)",
+    "Ibibio (Uyo)",
+    "Jukun (Wukari)",
+    "Jukun (Takum)",
+    "Others"
   ]
 };

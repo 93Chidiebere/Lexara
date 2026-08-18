@@ -935,32 +935,52 @@ export default function App() {
                         required
                       />
                     </div>
-
                     <div>
                       <label style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "var(--text-secondary)", marginBottom: "4px" }}>
                         Primary Language (Tribe)
                       </label>
-                      <input
-                        type="text"
+                      <select
                         value={signupLanguage}
-                        onChange={(e) => setSignupLanguage(e.target.value)}
-                        placeholder="e.g. Igbo, Tiv, Yoruba, Hausa"
+                        onChange={(e) => {
+                          setSignupLanguage(e.target.value);
+                          setSignupDialect("");
+                        }}
                         className="form-input"
                         required
-                      />
+                      >
+                        <option value="">-- Select Language --</option>
+                        <option value="Igbo">Igbo</option>
+                        <option value="Hausa">Hausa</option>
+                        <option value="Yoruba">Yoruba</option>
+                        <option value="Twi">Twi</option>
+                        <option value="Others (Efik, Ibibio, Jukun)">Others (Efik, Ibibio, Jukun)</option>
+                      </select>
                     </div>
 
                     <div>
                       <label style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "var(--text-secondary)", marginBottom: "4px" }}>
                         Dialect (Optional)
                       </label>
-                      <input
-                        type="text"
-                        value={signupDialect}
-                        onChange={(e) => setSignupDialect(e.target.value)}
-                        placeholder="e.g. Mgbowo, Abiriba"
-                        className="form-input"
-                      />
+                      {signupLanguage && ((LANGUAGES_AND_DIALECTS as any)[signupLanguage] || []).length > 0 ? (
+                        <select
+                          value={signupDialect}
+                          onChange={(e) => setSignupDialect(e.target.value)}
+                          className="form-input"
+                        >
+                          <option value="">-- Select Dialect --</option>
+                          {((LANGUAGES_AND_DIALECTS as any)[signupLanguage] || []).map((d: string) => (
+                            <option key={d} value={d}>{d}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          type="text"
+                          value={signupDialect}
+                          onChange={(e) => setSignupDialect(e.target.value)}
+                          placeholder="e.g. Calabar, Wukari"
+                          className="form-input"
+                        />
+                      )}
                     </div>
                   </>
                 )}
