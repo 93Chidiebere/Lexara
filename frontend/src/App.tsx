@@ -20,13 +20,14 @@ import type { Stimulus } from "./data/stimuli";
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 
 export default function App() {
-  // Navigation: "onboarding" | "solo" | "multiplayer" | "wallet" | "bridge" | "leaderboard" | "admin"
-  const [currentScreen, setCurrentScreen] = useState<string>("onboarding");
-  const [isRegistered, setIsRegistered] = useState<boolean>(false);
+  // TEST BYPASS CONFIGURATION: 
+  // Set currentScreen to "onboarding", isRegistered to false, and username to "" to restore Sign-In/Sign-Up screens.
+  const [currentScreen, setCurrentScreen] = useState<string>("solo");
+  const [isRegistered, setIsRegistered] = useState<boolean>(true);
   const [authTab, setAuthTab] = useState<"login" | "signup">("login");
 
   // User Profile State
-  const [username, setUsername] = useState<string>("");
+  const [username, setUsername] = useState<string>("chidi");
   const [loginPassword, setLoginPassword] = useState<string>("");
 
   // Anti-fraud Signup State Variables
