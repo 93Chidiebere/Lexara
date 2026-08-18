@@ -304,11 +304,22 @@ export default function App() {
       });
 
       if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.detail || "Authentication request failed");
+        let errMsg = "Authentication request failed (Server returned an error)";
+        try {
+          const errData = await res.json();
+          errMsg = errData.detail || errMsg;
+        } catch (jsonErr) {
+          errMsg = `Server Error (${res.status}): Please check if your backend server is online.`;
+        }
+        throw new Error(errMsg);
       }
 
-      const userData = await res.json();
+      let userData: any;
+      try {
+        userData = await res.json();
+      } catch (e) {
+        throw new Error("Data parsing failed: Server did not return a valid profile JSON.");
+      }
       
       if (authTab === "signup") {
         setSuccessMsg("Account created! Please enter password below to Sign In.");

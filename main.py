@@ -207,7 +207,10 @@ def init_db():
         conn.commit()
         conn.close()
 
-init_db()
+try:
+    init_db()
+except Exception as e:
+    print(f"DATABASE INITIALIZATION ERROR: {e}")
 
 # Models
 class SignupRequest(BaseModel):
