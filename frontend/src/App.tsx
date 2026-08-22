@@ -12,7 +12,9 @@ import {
   AlertTriangle,
   RotateCcw,
   ShieldCheck,
-  Plus
+  Plus,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { STIMULI, LANGUAGES_AND_DIALECTS } from "./data/stimuli";
 import type { Stimulus } from "./data/stimuli";
@@ -56,6 +58,7 @@ export default function App() {
   const [isValidating, setIsValidating] = useState<boolean>(false);
   const [backendStatus, setBackendStatus] = useState<"checking" | "online" | "offline">("checking");
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
 
   // Audio recording hardware hooks
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -269,6 +272,22 @@ export default function App() {
     setAudioBlob(null);
     setAudioUrl(null);
     setValidationResult(null);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartX(e.touches[0].clientX);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX === null) return;
+    const touchEndX = e.changedTouches[0].clientX;
+    const diffX = touchStartX - touchEndX;
+    if (diffX > 50) {
+      nextStimulus();
+    } else if (diffX < -50) {
+      prevStimulus();
+    }
+    setTouchStartX(null);
   };
 
   // User auth actions
@@ -1009,17 +1028,9 @@ export default function App() {
         {isRegistered && currentScreen === "solo" && (
           <div className="slide-up" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
             <div style={{ display: "flex", flexDirection: "column", gap: "10px", borderBottom: "1px solid var(--border-subtle)", paddingBottom: "12px" }}>
-              {/* Row 1: Title and Actions */}
+              {/* Row 1: Title */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <h2 style={{ fontSize: "20px", color: "var(--primary)", margin: 0 }}>Solo Mode</h2>
-                <div style={{ display: "flex", gap: "6px" }}>
-                  <button className="btn-skip" onClick={prevStimulus} style={{ padding: "4px 10px" }}>
-                    Prev
-                  </button>
-                  <button className="btn-skip" onClick={nextStimulus} style={{ padding: "4px 10px" }}>
-                    Next
-                  </button>
-                </div>
               </div>
 
               {/* Row 2: Dialect selector and status badge */}
@@ -1086,7 +1097,12 @@ export default function App() {
 
             {/* Stimulus display card */}
             <div className="glass-card stimulus-display" style={{ overflow: "hidden", padding: "0" }}>
-              <div className="image-container">
+              <div 
+                className="image-container"
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}
+                style={{ position: "relative" }}
+              >
                 {imageErrors[activeStimulus.id] ? (
                   <div className="image-placeholder-fallback">
                     <Globe size={32} color="var(--text-muted)" />
@@ -1100,6 +1116,32 @@ export default function App() {
                     onError={() => handleImageError(activeStimulus.id)}
                   />
                 )}
+
+                {/* Left Carousel Arrow */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    prevStimulus();
+                  }}
+                  className="carousel-arrow left"
+                  aria-label="Previous image"
+                >
+                  <ChevronLeft size={20} />
+                </button>
+
+                {/* Right Carousel Arrow */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    nextStimulus();
+                  }}
+                  className="carousel-arrow right"
+                  aria-label="Next image"
+                >
+                  <ChevronRight size={20} />
+                </button>
               </div>
 
               <div style={{ padding: "16px" }}>
