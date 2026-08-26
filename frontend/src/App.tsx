@@ -204,14 +204,14 @@ export default function App() {
   }, [username, language, activeDialect]);
 
   // Fisher-Yates Shuffle
-  const shuffleDeckArray = <T>(array: T[]): T[] => {
+  function shuffleDeckArray<T>(array: T[]): T[] {
     const arr = [...array];
     for (let i = arr.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [arr[i], arr[j]] = [arr[j], arr[i]];
     }
     return arr;
-  };
+  }
 
   // Filter out completed stimuli and shuffle the remaining deck
   useEffect(() => {
@@ -332,10 +332,11 @@ export default function App() {
     setErrorMsg("");
 
     try {
-      const activeStim = STIMULI[activeStimulusIndex];
+      const activeStim = activeStimulus;
+      if (!activeStim) return;
       
-      // Fetch stimulus image to file conversion
-      const response = await fetch(activeStim.imageUrl);
+      // Fetch stimulus image to file conversion (falls back to favicon for text-only scenarios)
+      const response = await fetch(activeStim.imageUrl || "/favicon.svg");
       const blob = await response.blob();
       const imageFile = new File([blob], "stimulus.jpg", { type: blob.type });
 
@@ -358,6 +359,9 @@ export default function App() {
 
       const data = await res.json();
       setValidationResult(data);
+      
+      // Mark card as completed
+      setCompletedStimuliIds(prev => [...prev, activeStim.id]);
       
       // Update global coins and solo validation counts
       if (isGuest) {
@@ -384,14 +388,16 @@ export default function App() {
 
   // Cycle Stimulus Deck
   const nextStimulus = () => {
-    setActiveStimulusIndex((prev) => (prev + 1) % STIMULI.length);
+    if (activeDeck.length === 0) return;
+    setActiveStimulusIndex((prev) => (prev + 1) % activeDeck.length);
     setAudioBlob(null);
     setAudioUrl(null);
     setValidationResult(null);
   };
 
   const prevStimulus = () => {
-    setActiveStimulusIndex((prev) => (prev - 1 + STIMULI.length) % STIMULI.length);
+    if (activeDeck.length === 0) return;
+    setActiveStimulusIndex((prev) => (prev - 1 + activeDeck.length) % activeDeck.length);
     setAudioBlob(null);
     setAudioUrl(null);
     setValidationResult(null);
@@ -1234,161 +1240,257 @@ export default function App() {
             </div>
 
             {/* Stimulus display card */}
-            <div className="glass-card stimulus-display" style={{ overflow: "hidden", padding: "0" }}>
-              <div 
-                className="image-container"
-                onTouchStart={handleTouchStart}
-                onTouchEnd={handleTouchEnd}
-                style={{ position: "relative" }}
-              >
-                {imageErrors[activeStimulus.id] ? (
-                  <div className="image-placeholder-fallback">
-                    <Globe size={32} color="var(--text-muted)" />
-                    <span style={{ fontSize: "11px", color: "var(--text-secondary)", marginTop: "6px" }}>Image Offline</span>
-                  </div>
-                ) : (
-                  <img
-                    src={activeStimulus.imageUrl}
-                    alt={activeStimulus.title}
-                    className="stimulus-image"
-                    onError={() => handleImageError(activeStimulus.id)}
-                  />
-                )}
-
-                {/* Left Carousel Arrow */}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    prevStimulus();
-                  }}
-                  className="carousel-arrow left"
-                  aria-label="Previous image"
-                >
-                  <ChevronLeft size={20} />
-                </button>
-
-                {/* Right Carousel Arrow */}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    nextStimulus();
-                  }}
-                  className="carousel-arrow right"
-                  aria-label="Next image"
-                >
-                  <ChevronRight size={20} />
-                </button>
-              </div>
-
-              <div style={{ padding: "16px" }}>
-                <h3 style={{ fontSize: "16px" }}>{activeStimulus.title}</h3>
-                <p style={{ color: "var(--text-secondary)", fontSize: "13px", marginTop: "4px" }}>
-                  {activeStimulus.description}
+            {!activeStimulus ? (
+              <div className="glass-card" style={{ padding: "40px 20px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: "16px" }}>
+                <Award size={48} color="var(--color-gold)" style={{ margin: "0 auto" }} />
+                <h3 style={{ fontSize: "18px", color: "var(--color-gold)", fontWeight: "700" }}>All Cards Completed! 🎉</h3>
+                <p style={{ fontSize: "12.5px", color: "var(--text-secondary)", lineHeight: "1.6", maxWidth: "320px", margin: "0 auto" }}>
+                  Fantastic job! You have described all available pictures and scenarios in the {activeDialect || language} dialect. 
+                  Change your dialect/language or check back later for newly added cards!
                 </p>
-                <div style={{ marginTop: "12px", background: "rgba(255,255,255,0.03)", padding: "10px", borderRadius: "8px", borderLeft: "3px solid var(--primary)" }}>
-                  <p style={{ fontSize: "11px", fontWeight: "600" }}>PROMPT FOR YOU:</p>
-                  <p style={{ fontSize: "12px", color: "var(--text-secondary)" }}>{activeStimulus.audioPrompt}</p>
-                </div>
               </div>
-            </div>
-
-            {/* Mic / Audio Panel */}
-            <div className="glass-card mic-panel" style={{ padding: "20px", textAlign: "center" }}>
-              {errorMsg && (
-                <div className="alert alert-error" style={{ marginBottom: "16px", fontSize: "12px" }}>
-                  {errorMsg}
-                </div>
-              )}
-
-              {!audioUrl && !isRecording && (
-                <div>
-                  <p style={{ color: "var(--text-secondary)", fontSize: "13px", marginBottom: "16px" }}>
-                    Speak naturally in your dialect. Descriptions must be spontaneous and describe details of the image.
-                  </p>
-                  <button className="btn btn-primary btn-record" onClick={startRecording}>
-                    <Mic size={15} />
-                    <span>Tap to Record Description</span>
-                  </button>
-                </div>
-              )}
-
-              {isRecording && (
-                <div>
-                  <div className="recording-pulse"></div>
-                  <p style={{ color: "var(--text-secondary)", fontSize: "13px", margin: "12px 0" }}>
-                    Recording audio description... ({recordingTime}s)
-                  </p>
-                  
-                  {/* Frequency Waveform Canvas */}
-                  <canvas ref={canvasRef} className="waveform-canvas" width="300" height="50"></canvas>
-
-                  <button className="btn btn-error" onClick={stopRecording}>
-                    <Square size={14} />
-                    <span>Stop Recording</span>
-                  </button>
-                </div>
-              )}
-
-              {audioUrl && !isRecording && (
-                <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                  <div style={{ display: "flex", justifyContent: "center", gap: "10px", alignItems: "center" }}>
-                    <audio src={audioUrl} controls style={{ borderRadius: "8px" }} />
-                    <button className="btn-skip" onClick={() => { setAudioUrl(null); setAudioBlob(null); }} style={{ padding: "10px" }} title="Discard recording">
-                      <RotateCcw size={14} />
-                    </button>
-                  </div>
-
-                  <div style={{ display: "flex", justifyContent: "center", gap: "10px" }}>
-                    <button className="btn btn-primary" onClick={submitSoloValidation} disabled={isValidating}>
-                      {isValidating ? (
-                        <span>Validating Spontaneous Dialect...</span>
-                      ) : (
-                        <>
-                          <ShieldCheck size={15} />
-                          <span>Submit to Validation AI</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {validationResult && (
-                <div className="validation-result slide-up" style={{
-                  marginTop: "20px",
-                  padding: "16px",
-                  borderRadius: "8px",
-                  background: validationResult.accept ? "rgba(16, 185, 129, 0.05)" : "rgba(239, 68, 68, 0.05)",
-                  border: `1px solid ${validationResult.accept ? "rgba(16, 185, 129, 0.2)" : "rgba(239, 68, 68, 0.2)"}`
-                }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                    <span style={{ fontWeight: "700", fontSize: "14px", color: validationResult.accept ? "var(--success)" : "var(--error)" }}>
-                      {validationResult.accept ? "Verification Confirmed (+1 Progress)" : "Requires Revision"}
-                    </span>
-                    <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
-                      AI Match Confidence: {validationResult.confidence}%
-                    </span>
-                  </div>
-
-                  <div style={{ textAlign: "left", fontSize: "13px", display: "flex", flexDirection: "column", gap: "8px" }}>
-                    <p>
-                      <strong>Transcribed Speech:</strong> <span style={{ color: "var(--text-primary)", fontStyle: "italic" }}>"{validationResult.transcription}"</span>
-                    </p>
-                    <p style={{ color: "var(--text-secondary)" }}>
-                      <strong>Assessment Detail:</strong> {validationResult.feedback_message}
-                    </p>
-                    {validationResult.points_earned > 0 && (
-                      <div className="alert alert-success" style={{ display: "flex", gap: "8px", fontSize: "13px", marginTop: "6px" }}>
-                        <Coins size={14} color="var(--primary)" />
-                        <span><strong>Congratulations!</strong> You completed 10 verified solo submissions and earned 1 Coin!</span>
+            ) : (
+              <>
+                <div className="glass-card stimulus-display" style={{ overflow: "hidden", padding: "0" }}>
+                  {activeStimulus.isScenario ? (
+                    <div 
+                      className="scenario-text-card"
+                      onTouchStart={handleTouchStart}
+                      onTouchEnd={handleTouchEnd}
+                      style={{ 
+                        height: "220px", 
+                        background: "linear-gradient(135deg, #1B3622 0%, #16171A 100%)", 
+                        display: "flex", 
+                        flexDirection: "column",
+                        justifyContent: "center", 
+                        alignItems: "center", 
+                        padding: "30px",
+                        position: "relative",
+                        textAlign: "center",
+                        color: "#FAFAF8"
+                      }}
+                    >
+                      {/* Quote icon background decorator */}
+                      <div style={{
+                        position: "absolute",
+                        top: "10px",
+                        left: "15px",
+                        fontSize: "80px",
+                        fontFamily: "Georgia, serif",
+                        color: "rgba(212, 175, 55, 0.15)",
+                        lineHeight: 1,
+                        userSelect: "none"
+                      }}>
+                        “
                       </div>
+                      
+                      <span style={{ 
+                        fontSize: "10px", 
+                        color: "var(--color-gold)", 
+                        textTransform: "uppercase", 
+                        fontWeight: "700", 
+                        letterSpacing: "1px",
+                        marginBottom: "12px"
+                      }}>
+                        {activeStimulus.category} Scenario
+                      </span>
+                      
+                      <p style={{ 
+                        fontSize: "15px", 
+                        fontWeight: "600", 
+                        lineHeight: "1.5", 
+                        maxWidth: "320px",
+                        color: "#FAFAF8",
+                        zIndex: 2
+                      }}>
+                        {activeStimulus.description}
+                      </p>
+
+                      {/* Left Carousel Arrow */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          prevStimulus();
+                        }}
+                        className="carousel-arrow left"
+                        aria-label="Previous card"
+                      >
+                        <ChevronLeft size={20} />
+                      </button>
+
+                      {/* Right Carousel Arrow */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          nextStimulus();
+                        }}
+                        className="carousel-arrow right"
+                        aria-label="Next card"
+                      >
+                        <ChevronRight size={20} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div 
+                      className="image-container"
+                      onTouchStart={handleTouchStart}
+                      onTouchEnd={handleTouchEnd}
+                      style={{ position: "relative" }}
+                    >
+                      {imageErrors[activeStimulus.id] ? (
+                        <div className="image-placeholder-fallback">
+                          <Globe size={32} color="var(--text-muted)" />
+                          <span style={{ fontSize: "11px", color: "var(--text-secondary)", marginTop: "6px" }}>Image Offline</span>
+                        </div>
+                      ) : (
+                        <img
+                          src={activeStimulus.imageUrl}
+                          alt={activeStimulus.title}
+                          className="stimulus-image"
+                          onError={() => handleImageError(activeStimulus.id)}
+                        />
+                      )}
+
+                      {/* Left Carousel Arrow */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          prevStimulus();
+                        }}
+                        className="carousel-arrow left"
+                        aria-label="Previous image"
+                      >
+                        <ChevronLeft size={20} />
+                      </button>
+
+                      {/* Right Carousel Arrow */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          nextStimulus();
+                        }}
+                        className="carousel-arrow right"
+                        aria-label="Next image"
+                      >
+                        <ChevronRight size={20} />
+                      </button>
+                    </div>
+                  )}
+
+                  <div style={{ padding: "16px" }}>
+                    <h3 style={{ fontSize: "16px" }}>{activeStimulus.title}</h3>
+                    {!activeStimulus.isScenario && (
+                      <p style={{ color: "var(--text-secondary)", fontSize: "13px", marginTop: "4px" }}>
+                        {activeStimulus.description}
+                      </p>
                     )}
+                    <div style={{ marginTop: "12px", background: "rgba(255,255,255,0.03)", padding: "10px", borderRadius: "8px", borderLeft: "3px solid var(--primary)" }}>
+                      <p style={{ fontSize: "11px", fontWeight: "600" }}>PROMPT FOR YOU:</p>
+                      <p style={{ fontSize: "12px", color: "var(--text-secondary)" }}>{activeStimulus.audioPrompt}</p>
+                    </div>
                   </div>
                 </div>
-              )}
-            </div>
+
+                {/* Mic / Audio Panel */}
+                <div className="glass-card mic-panel" style={{ padding: "20px", textAlign: "center" }}>
+                  {errorMsg && (
+                    <div className="alert alert-error" style={{ marginBottom: "16px", fontSize: "12px" }}>
+                      {errorMsg}
+                    </div>
+                  )}
+
+                  {!audioUrl && !isRecording && (
+                    <div>
+                      <p style={{ color: "var(--text-secondary)", fontSize: "13px", marginBottom: "16px" }}>
+                        Speak naturally in your dialect. Descriptions must be spontaneous and describe details of the prompt.
+                      </p>
+                      <button className="btn btn-primary btn-record" onClick={startRecording}>
+                        <Mic size={15} />
+                        <span>Tap to Record Description</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {isRecording && (
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                      <p style={{ color: "var(--text-secondary)", fontSize: "13px", margin: "12px 0" }}>
+                        Recording audio description... ({recordingTime}s)
+                      </p>
+                      
+                      {/* Frequency Waveform Canvas */}
+                      <canvas ref={canvasRef} className="waveform-canvas" width="300" height="50"></canvas>
+
+                      <button className="btn btn-error" onClick={stopRecording}>
+                        <Square size={14} />
+                        <span>Stop Recording</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {audioUrl && !isRecording && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                      <div style={{ display: "flex", justifyContent: "center", gap: "10px", alignItems: "center" }}>
+                        <audio src={audioUrl} controls style={{ borderRadius: "8px" }} />
+                        <button className="btn-skip" onClick={() => { setAudioUrl(null); setAudioBlob(null); }} style={{ padding: "10px" }} title="Discard recording">
+                          <RotateCcw size={14} />
+                        </button>
+                      </div>
+
+                      <div style={{ display: "flex", justifyContent: "center", gap: "10px" }}>
+                        <button className="btn btn-primary" onClick={submitSoloValidation} disabled={isValidating}>
+                          {isValidating ? (
+                            <span>Validating Spontaneous Dialect...</span>
+                          ) : (
+                            <>
+                              <ShieldCheck size={15} />
+                              <span>Submit to Validation AI</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {validationResult && (
+                    <div className="validation-result slide-up" style={{
+                      marginTop: "20px",
+                      padding: "16px",
+                      borderRadius: "8px",
+                      background: validationResult.accept ? "rgba(16, 185, 129, 0.05)" : "rgba(239, 68, 68, 0.05)",
+                      border: `1px solid ${validationResult.accept ? "rgba(16, 185, 129, 0.2)" : "rgba(239, 68, 68, 0.2)"}`
+                    }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                        <span style={{ fontWeight: "700", fontSize: "14px", color: validationResult.accept ? "var(--success)" : "var(--error)" }}>
+                          {validationResult.accept ? "Verification Confirmed (+1 Progress)" : "Requires Revision"}
+                        </span>
+                        <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
+                          AI Match Confidence: {validationResult.confidence}%
+                        </span>
+                      </div>
+
+                      <div style={{ textAlign: "left", fontSize: "13px", display: "flex", flexDirection: "column", gap: "8px" }}>
+                        <p>
+                          <strong>Transcribed Speech:</strong> <span style={{ color: "var(--text-primary)", fontStyle: "italic" }}>"{validationResult.transcription}"</span>
+                        </p>
+                        <p style={{ color: "var(--text-secondary)" }}>
+                          <strong>Assessment Detail:</strong> {validationResult.feedback_message}
+                        </p>
+                        {validationResult.points_earned > 0 && (
+                          <div className="alert alert-success" style={{ display: "flex", gap: "8px", fontSize: "13px", marginTop: "6px" }}>
+                            <Coins size={14} color="var(--primary)" />
+                            <span><strong>Congratulations!</strong> You completed 10 verified solo submissions and earned 1 Coin!</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         )}
 
@@ -1965,83 +2067,112 @@ export default function App() {
             </div>
 
             {/* Stimulus Card info */}
-            <div className="glass-card" style={{ padding: "12px", display: "flex", gap: "12px", alignItems: "center" }}>
-              <img 
-                src={activeStimulus.imageUrl.startsWith("http") ? activeStimulus.imageUrl : activeStimulus.imageUrl}
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1508213981460-0722d4f215d1?auto=format&fit=crop&w=600&q=80";
-                }}
-                alt="Stimulus" 
-                style={{ width: "60px", height: "60px", borderRadius: "6px", objectFit: "cover" }} 
-              />
-              <div>
-                <span style={{ fontSize: "10px", color: "var(--color-gold)", textTransform: "uppercase", fontWeight: "600" }}>{activeStimulus.category}</span>
-                <h4 style={{ fontSize: "14px", color: "white" }}>{activeStimulus.title}</h4>
+            {!activeStimulus ? (
+              <div className="glass-card" style={{ padding: "40px 20px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: "12px" }}>
+                <Award size={36} color="var(--color-gold)" style={{ margin: "0 auto" }} />
+                <h4 style={{ color: "var(--color-gold)", fontWeight: "700" }}>All Comparisons Completed!</h4>
+                <p style={{ fontSize: "11px", color: "var(--text-secondary)" }}>
+                  You have completed all available stimuli for bridge comparisons.
+                </p>
               </div>
-            </div>
-
-            <div className="glass-card" style={{ padding: "16px" }}>
-              <div style={{ display: "flex", gap: "10px", marginBottom: "16px" }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: "block", fontSize: "11px", color: "var(--text-secondary)", marginBottom: "4px" }}>Source Dialect</label>
-                  <select 
-                    className="form-input" 
-                    value={sourceDialect}
-                    onChange={(e) => setSourceDialect(e.target.value)}
-                  >
-                    {availableDialects.map(d => (
-                      <option key={d} value={d}>{d}</option>
-                    ))}
-                  </select>
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: "block", fontSize: "11px", color: "var(--text-secondary)", marginBottom: "4px" }}>Target Dialect</label>
-                  <select 
-                    className="form-input" 
-                    value={targetDialect}
-                    onChange={(e) => setTargetDialect(e.target.value)}
-                  >
-                    {availableDialects.map(d => (
-                      <option key={d} value={d}>{d}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div style={{ background: "#16171A", padding: "12px", borderRadius: "6px", border: "1px solid var(--border-subtle)" }}>
-                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            ) : (
+              <>
+                <div className="glass-card" style={{ padding: "12px", display: "flex", gap: "12px", alignItems: "center" }}>
+                  {!activeStimulus.isScenario ? (
+                    <img 
+                      src={activeStimulus.imageUrl || ""}
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1508213981460-0722d4f215d1?auto=format&fit=crop&w=600&q=80";
+                      }}
+                      alt="Stimulus" 
+                      style={{ width: "60px", height: "60px", borderRadius: "6px", objectFit: "cover" }} 
+                    />
+                  ) : (
+                    <div style={{ 
+                      width: "60px", 
+                      height: "60px", 
+                      borderRadius: "6px", 
+                      background: "linear-gradient(135deg, #1B3622 0%, #16171A 100%)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "var(--color-gold)",
+                      fontWeight: "800",
+                      fontSize: "20px"
+                    }}>
+                      “
+                    </div>
+                  )}
                   <div>
-                    <span style={{ fontSize: "10px", textTransform: "uppercase", color: "var(--color-gold)" }}>
-                      Source Text ({sourceDialect || "None"})
-                    </span>
-                    <p style={{ fontSize: "14px", fontStyle: "italic", marginTop: "2px", color: "white" }}>
-                      "{getTranslationText(sourceDialect).text}"
-                    </p>
-                    {getTranslationText(sourceDialect).source && (
-                      <span style={{ fontSize: "9px", color: "var(--text-secondary)" }}>
-                        Origin: {getTranslationText(sourceDialect).source}
-                      </span>
-                    )}
-                  </div>
-                  
-                  <hr style={{ border: "none", borderTop: "1px dashed var(--border-subtle)" }} />
-                  
-                  <div>
-                    <span style={{ fontSize: "10px", textTransform: "uppercase", color: "var(--success)" }}>
-                      Target Text ({targetDialect || "None"})
-                    </span>
-                    <p style={{ fontSize: "14px", fontStyle: "italic", marginTop: "2px", color: "white" }}>
-                      "{getTranslationText(targetDialect).text}"
-                    </p>
-                    {getTranslationText(targetDialect).source && (
-                      <span style={{ fontSize: "9px", color: "var(--text-secondary)" }}>
-                        Origin: {getTranslationText(targetDialect).source}
-                      </span>
-                    )}
+                    <span style={{ fontSize: "10px", color: "var(--color-gold)", textTransform: "uppercase", fontWeight: "600" }}>{activeStimulus.category}</span>
+                    <h4 style={{ fontSize: "14px", color: "white" }}>{activeStimulus.title}</h4>
                   </div>
                 </div>
-              </div>
-            </div>
+
+                <div className="glass-card" style={{ padding: "16px" }}>
+                  <div style={{ display: "flex", gap: "10px", marginBottom: "16px" }}>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: "block", fontSize: "11px", color: "var(--text-secondary)", marginBottom: "4px" }}>Source Dialect</label>
+                      <select 
+                        className="form-input" 
+                        value={sourceDialect}
+                        onChange={(e) => setSourceDialect(e.target.value)}
+                      >
+                        {availableDialects.map(d => (
+                          <option key={d} value={d}>{d}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: "block", fontSize: "11px", color: "var(--text-secondary)", marginBottom: "4px" }}>Target Dialect</label>
+                      <select 
+                        className="form-input" 
+                        value={targetDialect}
+                        onChange={(e) => setTargetDialect(e.target.value)}
+                      >
+                        {availableDialects.map(d => (
+                          <option key={d} value={d}>{d}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={{ background: "#16171A", padding: "12px", borderRadius: "6px", border: "1px solid var(--border-subtle)" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                      <div>
+                        <span style={{ fontSize: "10px", textTransform: "uppercase", color: "var(--color-gold)" }}>
+                          Source Text ({sourceDialect || "None"})
+                        </span>
+                        <p style={{ fontSize: "14px", fontStyle: "italic", marginTop: "2px", color: "white" }}>
+                          "{getTranslationText(sourceDialect).text}"
+                        </p>
+                        {getTranslationText(sourceDialect).source && (
+                          <span style={{ fontSize: "9px", color: "var(--text-secondary)" }}>
+                            Origin: {getTranslationText(sourceDialect).source}
+                          </span>
+                        )}
+                      </div>
+                      
+                      <hr style={{ border: "none", borderTop: "1px dashed var(--border-subtle)" }} />
+                      
+                      <div>
+                        <span style={{ fontSize: "10px", textTransform: "uppercase", color: "var(--success)" }}>
+                          Target Text ({targetDialect || "None"})
+                        </span>
+                        <p style={{ fontSize: "14px", fontStyle: "italic", marginTop: "2px", color: "white" }}>
+                          "{getTranslationText(targetDialect).text}"
+                        </p>
+                        {getTranslationText(targetDialect).source && (
+                          <span style={{ fontSize: "9px", color: "var(--text-secondary)" }}>
+                            Origin: {getTranslationText(targetDialect).source}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )}
 
