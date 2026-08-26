@@ -30,6 +30,29 @@ const getApiBase = (): string => {
 
 const API_BASE = getApiBase();
 
+const Logo = ({ size = 24, className = "" }: { size?: number; className?: string }) => (
+  <svg 
+    viewBox="0 0 24 24" 
+    width={size} 
+    height={size} 
+    fill="none" 
+    className={className}
+  >
+    {/* Gold Globe Circle & Lines */}
+    <circle cx="12" cy="12" r="10" stroke="#D4AF37" strokeWidth="1.5" />
+    <path d="M12 2a15.3 15.3 0 0 0 0 20 15.3 15.3 0 0 0 0-20" stroke="#D4AF37" strokeWidth="1" opacity="0.6" />
+    <path d="M2 12h20" stroke="#D4AF37" strokeWidth="1" opacity="0.6" />
+    
+    {/* Green Africa Map Silhouette Overlay */}
+    <path 
+      d="M 8.5 7.5 C 10.5 7.0 12.5 7.0 14 7.5 C 15 8.0 15.5 9.0 16 10 C 17.5 10.5 18.5 11.0 18.5 12.0 C 18.5 13.0 17 14.5 15.5 15 C 14.5 16.5 14 18.5 13.5 21 C 12.5 21.5 11.5 21.5 11 21 C 10.5 19 10 17 9.5 15 C 9 14.5 8.5 13.5 7.5 13.5 C 6 13.5 4.5 12 4.5 10 C 4.5 8.5 6.5 8 8.5 7.5 Z" 
+      fill="#2E5A36" 
+      stroke="#FAFAF8"
+      strokeWidth="0.75"
+    />
+  </svg>
+);
+
 export default function App() {
   // TEST BYPASS CONFIGURATION: 
   // Set currentScreen to "onboarding", isRegistered to false, and username to "" to restore Sign-In/Sign-Up screens.
@@ -749,7 +772,7 @@ export default function App() {
           setCurrentScreen("onboarding");
           if (wsRef.current) wsRef.current.close();
         }} title="Reset setup & profile">
-          <Globe className="app-logo-icon" size={18} color="var(--color-gold)" />
+          <Logo size={18} className="app-logo-icon" />
           <h1 className="app-logo" style={{ color: "var(--color-gold)" }}>
             {username === "vincent.chidiebere@outlook.com" ? "LEXARA ADMIN" : "LEXARA"}
           </h1>
