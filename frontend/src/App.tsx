@@ -19,7 +19,16 @@ import {
 import { STIMULI, LANGUAGES_AND_DIALECTS } from "./data/stimuli";
 import type { Stimulus } from "./data/stimuli";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
+const getApiBase = (): string => {
+  const envVal = import.meta.env.VITE_API_BASE;
+  if (envVal) return envVal;
+  if (typeof window !== "undefined" && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+    return "https://lexara-production-a9f2.up.railway.app";
+  }
+  return "http://localhost:8000";
+};
+
+const API_BASE = getApiBase();
 
 export default function App() {
   // TEST BYPASS CONFIGURATION: 
