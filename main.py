@@ -429,6 +429,14 @@ async def validate(
         if os.path.exists(image_path):
             os.unlink(image_path)
 
+@app.get("/api/user/completed_stimuli/{username}")
+def get_completed_stimuli(username: str, language: str, dialect: str):
+    rows = execute_query(
+        "SELECT DISTINCT image_id FROM submissions WHERE username = %s AND language = %s AND dialect = %s",
+        (username, language, dialect)
+    )
+    return [row["image_id"] for row in rows]
+
 @app.get("/api/admin/submissions")
 def admin_submissions():
     return execute_query("SELECT * FROM submissions ORDER BY id DESC")
