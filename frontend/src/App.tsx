@@ -63,6 +63,10 @@ export default function App() {
   const [guestPlayCount, setGuestPlayCount] = useState<number>(0);
   const [showGuestLimitModal, setShowGuestLimitModal] = useState<boolean>(false);
 
+  // Deck & Filtering States
+  const [completedStimuliIds, setCompletedStimuliIds] = useState<string[]>([]);
+  const [activeDeck, setActiveDeck] = useState<any[]>([]);
+
   // User Profile State
   const [username, setUsername] = useState<string>("guest");
   const [loginPassword, setLoginPassword] = useState<string>("");
@@ -116,7 +120,7 @@ export default function App() {
   const [multiplayerNotify, setMultiplayerNotify] = useState<string>("");
   const wsRef = useRef<WebSocket | null>(null);
 
-  const activeStimulus = STIMULI[activeStimulusIndex];
+  const activeStimulus = activeDeck[activeStimulusIndex] || null;
   const activeWsStimulus = STIMULI.find(s => s.id === wsStimulusId) || STIMULI[0];
 
   // Admin Dashboard State
@@ -177,6 +181,45 @@ export default function App() {
     setGuestPlayCount(0);
     setShowGuestLimitModal(false);
   };
+
+  const fetchCompletedStimuli = async (usernameParam: string, langParam: string, dialectParam: string) => {
+    if (!usernameParam || usernameParam === "guest") {
+      setCompletedStimuliIds([]);
+      return;
+    }
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/user/completed_stimuli/${encodeURIComponent(usernameParam)}?language=${encodeURIComponent(langParam)}&dialect=${encodeURIComponent(dialectParam)}`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setCompletedStimuliIds(data);
+      }
+    } catch (e) {}
+  };
+
+  // Fetch completed items whenever context changes
+  useEffect(() => {
+    fetchCompletedStimuli(username, language, activeDialect);
+  }, [username, language, activeDialect]);
+
+  // Fisher-Yates Shuffle
+  const shuffleDeckArray = <T>(array: T[]): T[] => {
+    const arr = [...array];
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  };
+
+  // Filter out completed stimuli and shuffle the remaining deck
+  useEffect(() => {
+    const filtered = STIMULI.filter(stim => !completedStimuliIds.includes(stim.id));
+    const shuffled = shuffleDeckArray(filtered);
+    setActiveDeck(shuffled);
+    setActiveStimulusIndex(0);
+  }, [completedStimuliIds, language, activeDialect]);
 
   // Update Active Dialect when language changes
   useEffect(() => {

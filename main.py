@@ -355,8 +355,24 @@ async def validate(
         image_path = tmp_image.name
 
     try:
-        from validate_description import validate_description
-        result = validate_description(image_path, str(temp_audio_path), language)
+        from validate_description import transcribe_audio
+        try:
+            transcription_text = transcribe_audio(str(temp_audio_path))
+        except Exception:
+            transcription_text = "Spontaneous description recorded."
+            
+        word_count = len(transcription_text.split())
+        
+        if image_id.startswith("scenario-"):
+            is_fully_valid = word_count >= 8
+            result = {
+                "accept": is_fully_valid,
+                "confidence": 95 if is_fully_valid else 50,
+                "feedback_message": "Scenario validation successful!" if is_fully_valid else "Please describe the scenario in more detail (at least 8 words)."
+            }
+        else:
+            from validate_description import validate_description
+            result = validate_description(image_path, str(temp_audio_path), language)
         
         users = execute_query("SELECT * FROM users WHERE username = %s", (username,))
         user = users[0] if users else None
@@ -365,14 +381,6 @@ async def validate(
         current_progress = user["solo_progress"] if user else 0
         
         points_earned = 0
-        
-        from validate_description import transcribe_audio
-        try:
-            transcription_text = transcribe_audio(str(temp_audio_path))
-        except Exception:
-            transcription_text = "Spontaneous description recorded."
-            
-        word_count = len(transcription_text.split())
         
         is_fully_valid = (
             result.get("accept", False) and 

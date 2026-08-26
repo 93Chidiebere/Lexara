@@ -3,8 +3,9 @@ export interface Stimulus {
   title: string;
   category: string;
   description: string;
-  imageUrl: string;
+  imageUrl?: string;
   audioPrompt: string;
+  isScenario?: boolean;
   dialectsData?: {
     [key: string]: {
       standard: string;
@@ -15,7 +16,7 @@ export interface Stimulus {
   };
 }
 
-export const STIMULI: Stimulus[] = [
+const BASE_STIMULI: Stimulus[] = [
   {
     id: "stim-akara",
     title: "Fried Akara",
@@ -337,6 +338,204 @@ export const STIMULI: Stimulus[] = [
     audioPrompt: "Describe the woman cooking on the firewood fire."
   }
 ];
+
+const generateScenarios = (): Stimulus[] => {
+  const categories = [
+    {
+      name: "Family & Greetings",
+      scenarios: [
+        "When you wake in the morning, how do you greet your elderly ones?",
+        "How do you introduce your younger sibling to an uncle visiting from abroad?",
+        "Your mother cooked a delicious meal. How do you thank her after eating?",
+        "How do you greet your grandfather on his 80th birthday?",
+        "You are welcoming your father back from a long business trip. What do you say?",
+        "How do you apologize to your mother after accidentally breaking her favorite plate?",
+        "How do you console your sister who is sad about losing her school competition?",
+        "Your family is gathered for dinner. How do you say grace before meals?",
+        "How do you ask your uncle for a small pocket money gift politely?",
+        "Your grandmother tells you a folk story. How do you show appreciation at the end?"
+      ]
+    },
+    {
+      name: "Market & Commerce",
+      scenarios: [
+        "If you sell in the market and a customer comes, how do you welcome them and find out what they want?",
+        "How do you bargain with a market woman who is selling a basket of tomatoes too high?",
+        "You want to buy fresh fish. How do you ask the seller if the fish was caught today?",
+        "How do you tell a vendor that their goods are of high quality, but you cannot afford their price?",
+        "How do you politely demand your correct balance (change) from a commercial bus conductor?",
+        "You want to buy a bag of garri. How do you ask the seller to measure it for you?",
+        "A customer is complaining about the price of your goods. How do you convince them to buy?",
+        "How do you ask a fellow buyer in the market where to find the best local palm oil?",
+        "How do you tell a tailor that the clothes they made for you are too tight?",
+        "You want to pay for goods with mobile transfer. How do you ask the vendor for their bank details?"
+      ]
+    },
+    {
+      name: "School & Education",
+      scenarios: [
+        "You are late for a class. How do you apologize to the teacher and ask for permission to enter?",
+        "How do you ask a classmate to lend you a pen during a test?",
+        "Your teacher explains a math problem, but you don't understand. How do you ask them to repeat it?",
+        "How do you congratulate a classmate who came first in the class examination?",
+        "How do you ask the school librarian where to find historical books about Nigeria?",
+        "You want to form a study group. How do you invite your friends to join you?",
+        "How do you tell your teacher that you were absent yesterday because you were sick?",
+        "You are defending a point in a school debate. How do you start your speech?",
+        "How do you ask your principal for permission to leave school early to visit the hospital?",
+        "Your classmate lost their school bag. How do you ask others to help search for it?"
+      ]
+    },
+    {
+      name: "Social & Community",
+      scenarios: [
+        "How do you greet your neighbor who is sitting on their porch in the evening?",
+        "A new neighbor just moved in next door. How do you welcome them to the street?",
+        "How do you ask a passerby for directions to the nearest post office or hospital?",
+        "How do you thank a neighbor who helped you carry a heavy load of water?",
+        "A community meeting is about to start. How do you call everyone to order?",
+        "How do you warn a child playing near the road about an oncoming car?",
+        "How do you invite your neighbor to your child's dedication ceremony next weekend?",
+        "How do you offer condolences to a neighbor who just lost a family member?",
+        "How do you ask the community youth leader how to register for the local cleanup project?",
+        "How do you settle a small dispute between two neighbors arguing over parking space?"
+      ]
+    },
+    {
+      name: "Faith & Worship",
+      scenarios: [
+        "You are entering a Catholic church. How do you greet the parish priest?",
+        "You are welcoming a new member to your Protestant fellowship. What do you say?",
+        "How do you invite a friend to attend a special harvest thanksgiving service at your church?",
+        "You are greeting a Muslim friend during Eid celebrations. What do you say?",
+        "How do you request a prayer from your local Imam or Pastor during a difficult time?",
+        "How do you congratulate a friend who just completed the Ramadan fast?",
+        "How do you lead a short opening prayer before a family fellowship session?",
+        "How do you greet church elders after Sunday service?",
+        "How do you ask a mosque volunteer where to perform ablution (wudu)?",
+        "How do you share a testimony of healing during a weekly testimony service?"
+      ]
+    },
+    {
+      name: "Leisure & Public Spaces",
+      scenarios: [
+        "You are at a game center. How do you ask the attendant how much a token costs?",
+        "How do you ask a stranger at a park if you can sit on the empty space on their bench?",
+        "You are at a shopping mall. How do you ask a sales agent where the electronics section is?",
+        "You are checking into a hotel. How do you tell the receptionist you have a reservation?",
+        "How do you ask a hotel receptionist if breakfast is included in your room rate?",
+        "How do you tell a restaurant waiter that they brought the wrong food order?",
+        "You are at a local park. How do you ask a group of boys if you can join their football game?",
+        "How do you ask a shopkeeper at the mall if they have a discount on their clothing items?",
+        "How do you ask a cinema cashier for two tickets to the afternoon movie?",
+        "How do you tell a hotel room service attendant that your bathroom tap is leaking?"
+      ]
+    },
+    {
+      name: "Household Tasks",
+      scenarios: [
+        "You are teaching a younger child how to fold bedsheets neatly. What instructions do you give?",
+        "How do you ask your brother to help you sort the white clothes before doing the laundry?",
+        "You are dicing onions in the kitchen. How do you tell your sister to bring the dry pepper?",
+        "How do you instruct someone on how to arrange firewood to set a fast-burning fire?",
+        "You are sweeping the compound. How do you ask someone to fetch the dustbin?",
+        "How do you explain to a helper how to wash bitter leaves to remove the bitterness for soup?",
+        "You are boiling yams. How do you check if they are soft enough by poking them with a fork?",
+        "How do you warn someone to be careful when lighting the kerosene stove?",
+        "How do you tell your sibling that the tap is running and they should turn it off?",
+        "How do you instruct someone to wash the mortar and pestle immediately after pounding?"
+      ]
+    },
+    {
+      name: "Local Delicacies",
+      scenarios: [
+        "You are eating semo with egusi soup. How do you describe the taste to a guest?",
+        "How do you ask your host to add more hot soup over your akpu mound?",
+        "You want to buy abacha (African salad). How do you instruct the seller on the quantity of garden eggs to add?",
+        "How do you explain to a visitor why you prefer eating solid swallows with your hands?",
+        "You are eating roasted plantain (boli) with groundnuts. How do you express how delicious it is?",
+        "How do you ask your sister if the ugba in the soup is soft enough to eat?",
+        "You are serving fresh palm wine. How do you tell your guests to drink it before it turns sour?",
+        "How do you ask a restaurant seller to give you a combination of beef and shaki in your soup?",
+        "You are eating hot pepper soup. How do you tell the cook that it is spicy but very sweet?",
+        "How do you explain to someone how to chew local garden eggs with peanut paste?"
+      ]
+    },
+    {
+      name: "Travel & Transit",
+      scenarios: [
+        "You are preparing to travel. How do you list the items you need to pack in your bag?",
+        "How do you ask a commercial bus driver if they are heading towards the local airport?",
+        "You are at a garage. How do you negotiate the transport fare with a taxi driver?",
+        "How do you tell a fellow passenger to adjust slightly so you can sit comfortably?",
+        "How do you ask the driver to stop at the next junction so you can drop off?",
+        "Your luggage is heavy. How do you ask a helper at the station to help you lift it?",
+        "How do you ask a ticket seller when the next luxury bus to Abuja is leaving?",
+        "How do you tell the driver that he is speeding and should slow down for safety?",
+        "You arrived at your destination. How do you ask someone where to find a cheap hotel?",
+        "How do you bid goodbye to your family before boarding a long-distance bus?"
+      ]
+    },
+    {
+      name: "Health & Fitness",
+      scenarios: [
+        "You are lifting weights. How do you ask a gym partner to spot you?",
+        "How do you describe a sharp pain in your waist to a local pharmacist?",
+        "How do you tell your fitness trainer that you are too tired to continue the exercise?",
+        "How do you ask a nurse at the clinic for your blood pressure card?",
+        "How do you explain to a doctor that you have been having chills and fever since yesterday?",
+        "How do you instruct a child on how to take their malaria syrup dose?",
+        "How do you ask a gym receptionist for the monthly membership pricing?",
+        "How do you tell your teammate that you sprained your ankle during the football match?",
+        "How do you ask a pharmacist if they have a cheaper generic brand of the prescribed medicine?",
+        "How do you tell someone that doing early morning jogging keeps your body fit?"
+      ]
+    }
+  ];
+
+  const list: Stimulus[] = [];
+  let idxVal = 1;
+  
+  for (const cat of categories) {
+    // Original 10
+    cat.scenarios.forEach((s, idx) => {
+      list.push({
+        id: `scenario-${idxVal++}`,
+        title: `${cat.name} Scenario #${idx + 1}`,
+        category: cat.name,
+        description: s,
+        audioPrompt: `Translate and speak this scenario in your dialect: "${s}"`,
+        isScenario: true
+      });
+    });
+    // Varied 10 to reach 20 per category (20 * 10 = 200 scenarios total!)
+    cat.scenarios.forEach((s, idx) => {
+      let varied = s;
+      if (s.includes("elderly ones")) varied = s.replace("elderly ones", "parents");
+      else if (s.includes("uncle")) varied = s.replace("uncle", "aunt");
+      else if (s.includes("mother")) varied = s.replace("mother", "father");
+      else if (s.includes("classmate")) varied = s.replace("classmate", "friend");
+      else if (s.includes("neighbor")) varied = s.replace("neighbor", "landlord");
+      else if (s.includes("Catholic")) varied = s.replace("Catholic", "Anglican");
+      else if (s.includes("Muslim")) varied = s.replace("Muslim", "Christian");
+      else if (s.includes("waiter")) varied = s.replace("waiter", "chef");
+      else if (s.includes("firewood")) varied = s.replace("firewood", "charcoal");
+      else varied = s + " Explain clearly.";
+
+      list.push({
+        id: `scenario-${idxVal++}`,
+        title: `${cat.name} Scenario #${idx + 11}`,
+        category: cat.name,
+        description: varied,
+        audioPrompt: `Translate and speak this scenario in your dialect: "${varied}"`,
+        isScenario: true
+      });
+    });
+  }
+  return list;
+};
+
+export const STIMULI: Stimulus[] = BASE_STIMULI.concat(generateScenarios());
 
 export const LANGUAGES_AND_DIALECTS = {
   "Igbo": [
