@@ -811,13 +811,13 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (currentScreen === "bridge") {
+    if (currentScreen === "bridge" && activeStimulus) {
       fetchBridgeData(activeStimulus.id);
     }
-  }, [currentScreen, activeStimulusIndex]);
+  }, [currentScreen, activeStimulusIndex, activeStimulus]);
 
   const availableDialects = Array.from(new Set([
-    ...Object.keys(activeStimulus.dialectsData || {}),
+    ...(activeStimulus ? Object.keys(activeStimulus.dialectsData || {}) : []),
     ...bridgeData.map(item => item.dialect)
   ])).filter(Boolean);
 
@@ -833,7 +833,7 @@ export default function App() {
       setSourceDialect("");
       setTargetDialect("");
     }
-  }, [bridgeData, activeStimulusIndex]);
+  }, [bridgeData, activeStimulusIndex, activeStimulus]);
 
   const getTranslationText = (dial: string) => {
     if (!dial) return { text: "No dialect chosen.", source: "" };
@@ -841,7 +841,7 @@ export default function App() {
     if (dbMatch) {
       return { text: dbMatch.consensus_text, source: `Verified Contributor: ${dbMatch.username}` };
     }
-    const staticMatch = activeStimulus.dialectsData?.[dial];
+    const staticMatch = activeStimulus?.dialectsData?.[dial];
     if (staticMatch) {
       return { text: staticMatch.audioMockText, source: "Linguistic Template Reference" };
     }
