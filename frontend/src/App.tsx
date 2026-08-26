@@ -54,14 +54,17 @@ const Logo = ({ size = 24, className = "" }: { size?: number; className?: string
 );
 
 export default function App() {
-  // TEST BYPASS CONFIGURATION: 
-  // Set currentScreen to "onboarding", isRegistered to false, and username to "" to restore Sign-In/Sign-Up screens.
   const [currentScreen, setCurrentScreen] = useState<string>("solo");
   const [isRegistered, setIsRegistered] = useState<boolean>(true);
   const [authTab, setAuthTab] = useState<"login" | "signup">("login");
 
+  // Guest & Auto-login States
+  const [isGuest, setIsGuest] = useState<boolean>(true);
+  const [guestPlayCount, setGuestPlayCount] = useState<number>(0);
+  const [showGuestLimitModal, setShowGuestLimitModal] = useState<boolean>(false);
+
   // User Profile State
-  const [username, setUsername] = useState<string>("chidi");
+  const [username, setUsername] = useState<string>("guest");
   const [loginPassword, setLoginPassword] = useState<string>("");
 
   // Anti-fraud Signup State Variables
@@ -141,6 +144,39 @@ export default function App() {
       .then(() => setBackendStatus("online"))
       .catch(() => setBackendStatus("offline"));
   }, []);
+
+  // Load session or initialize Guest Mode
+  useEffect(() => {
+    const savedUser = localStorage.getItem("lexara_user");
+    if (savedUser) {
+      try {
+        const parsed = JSON.parse(savedUser);
+        setUsername(parsed.username);
+        setPoints(parsed.points || 0);
+        setSoloProgress(parsed.solo_progress || 0);
+        setLanguage(parsed.language || "Igbo");
+        if (parsed.dialect) setActiveDialect(parsed.dialect);
+        if (parsed.password) setLoginPassword(parsed.password);
+        setIsRegistered(true);
+        setIsGuest(false);
+      } catch (e) {
+        localStorage.removeItem("lexara_user");
+        initGuestMode();
+      }
+    } else {
+      initGuestMode();
+    }
+  }, []);
+
+  const initGuestMode = () => {
+    setIsRegistered(true);
+    setIsGuest(true);
+    setUsername("guest");
+    setPoints(0);
+    setSoloProgress(0);
+    setGuestPlayCount(0);
+    setShowGuestLimitModal(false);
+  };
 
   // Update Active Dialect when language changes
   useEffect(() => {
@@ -281,8 +317,20 @@ export default function App() {
       setValidationResult(data);
       
       // Update global coins and solo validation counts
-      setPoints(data.new_points);
-      setSoloProgress(data.new_progress);
+      if (isGuest) {
+        const newCount = guestPlayCount + 1;
+        setGuestPlayCount(newCount);
+        setPoints(newCount * 10);
+        setSoloProgress(newCount);
+        if (newCount >= 2) {
+          setTimeout(() => {
+            setShowGuestLimitModal(true);
+          }, 1500);
+        }
+      } else {
+        setPoints(data.new_points);
+        setSoloProgress(data.new_progress);
+      }
       
     } catch (e: any) {
       setErrorMsg("Failed to connect to backend server. Make sure uvicorn is running on port 8000.");
@@ -389,6 +437,18 @@ export default function App() {
         setActiveDialect(userData.dialect);
       }
       setIsRegistered(true);
+      setIsGuest(false);
+      
+      try {
+        localStorage.setItem("lexara_user", JSON.stringify({
+          username: userData.username,
+          language: userData.language,
+          points: userData.points,
+          solo_progress: userData.solo_progress,
+          dialect: userData.dialect || "",
+          password: loginPassword
+        }));
+      } catch (storageErr) {}
       
       if (userData.username === "vincent.chidiebere@outlook.com") {
         setCurrentScreen("admin");
@@ -768,10 +828,13 @@ export default function App() {
       {/* Top Application Bar */}
       <header className="app-header">
         <div className="app-title-group" style={{ cursor: "pointer" }} onClick={() => {
+          localStorage.removeItem("lexara_user");
+          setIsGuest(true);
+          setGuestPlayCount(0);
           setIsRegistered(false);
           setCurrentScreen("onboarding");
           if (wsRef.current) wsRef.current.close();
-        }} title="Reset setup & profile">
+        }} title="Log Out / Switch Account">
           <Logo size={18} className="app-logo-icon" />
           <h1 className="app-logo" style={{ color: "var(--color-gold)" }}>
             {username === "vincent.chidiebere@outlook.com" ? "LEXARA ADMIN" : "LEXARA"}
@@ -1981,23 +2044,148 @@ export default function App() {
             <Mic size={15} />
             <span>Solo</span>
           </button>
-          <button onClick={() => setCurrentScreen("multiplayer")} className={`nav-item ${currentScreen === "multiplayer" ? "active" : ""}`}>
+          <button 
+            onClick={() => {
+              if (isGuest) {
+                setShowGuestLimitModal(true);
+              } else {
+                setCurrentScreen("multiplayer");
+              }
+            }} 
+            className={`nav-item ${currentScreen === "multiplayer" ? "active" : ""} ${isGuest ? "nav-item-disabled" : ""}`}
+            style={isGuest ? { opacity: 0.5 } : {}}
+          >
             <Users size={15} />
             <span>Arena</span>
           </button>
-          <button onClick={() => setCurrentScreen("bridge")} className={`nav-item ${currentScreen === "bridge" ? "active" : ""}`}>
+          <button 
+            onClick={() => {
+              if (isGuest) {
+                setShowGuestLimitModal(true);
+              } else {
+                setCurrentScreen("bridge");
+              }
+            }} 
+            className={`nav-item ${currentScreen === "bridge" ? "active" : ""} ${isGuest ? "nav-item-disabled" : ""}`}
+            style={isGuest ? { opacity: 0.5 } : {}}
+          >
             <BookOpen size={15} />
             <span>Bridge</span>
           </button>
-          <button onClick={() => setCurrentScreen("wallet")} className={`nav-item ${currentScreen === "wallet" ? "active" : ""}`}>
+          <button 
+            onClick={() => {
+              if (isGuest) {
+                setShowGuestLimitModal(true);
+              } else {
+                setCurrentScreen("wallet");
+              }
+            }} 
+            className={`nav-item ${currentScreen === "wallet" ? "active" : ""} ${isGuest ? "nav-item-disabled" : ""}`}
+            style={isGuest ? { opacity: 0.5 } : {}}
+          >
             <Wallet size={15} />
             <span>Wallet</span>
           </button>
-          <button onClick={() => setCurrentScreen("leaderboard")} className={`nav-item ${currentScreen === "leaderboard" ? "active" : ""}`}>
+          <button 
+            onClick={() => {
+              if (isGuest) {
+                setShowGuestLimitModal(true);
+              } else {
+                setCurrentScreen("leaderboard");
+              }
+            }} 
+            className={`nav-item ${currentScreen === "leaderboard" ? "active" : ""} ${isGuest ? "nav-item-disabled" : ""}`}
+            style={isGuest ? { opacity: 0.5 } : {}}
+          >
             <Award size={15} />
             <span>Rank</span>
           </button>
         </footer>
+      )}
+
+      {/* GUEST TRIAL LIMIT MODAL OVERLAY */}
+      {showGuestLimitModal && (
+        <div style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: "rgba(11, 12, 14, 0.8)",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          zIndex: 9999,
+          padding: "20px"
+        }}>
+          <div className="glass-card slide-up" style={{
+            padding: "24px",
+            textAlign: "center",
+            maxWidth: "360px",
+            background: "#FAFAF8",
+            border: "1px solid var(--border-subtle)",
+            boxShadow: "0 10px 25px rgba(0,0,0,0.3)"
+          }}>
+            <div style={{
+              width: "48px",
+              height: "48px",
+              background: "rgba(46, 90, 54, 0.1)",
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              margin: "0 auto 16px auto"
+            }}>
+              <Coins size={24} color="var(--primary)" />
+            </div>
+
+            <h3 style={{ fontSize: "18px", color: "var(--primary)", fontWeight: "700", marginBottom: "8px" }}>
+              Trial Complete! 🌟
+            </h3>
+            
+            <p style={{ fontSize: "12.5px", color: "var(--text-secondary)", lineHeight: "1.5", marginBottom: "20px" }}>
+              You've successfully recorded {guestPlayCount} cards and earned <strong>{points} Coins (₦{points}.00)</strong>! 
+              Create a free account now to secure your progress, start earning real money, and unlock the Multiplayer Consensus Arena.
+            </p>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              <button 
+                className="btn btn-primary"
+                onClick={() => {
+                  setShowGuestLimitModal(false);
+                  setIsRegistered(false);
+                  setAuthTab("signup");
+                  setCurrentScreen("onboarding");
+                }}
+              >
+                Create Free Account
+              </button>
+              
+              <button 
+                className="btn-skip"
+                style={{ width: "100%", padding: "10px", fontWeight: "600" }}
+                onClick={() => {
+                  setShowGuestLimitModal(false);
+                  setIsRegistered(false);
+                  setAuthTab("login");
+                  setCurrentScreen("onboarding");
+                }}
+              >
+                Sign In (Existing Account)
+              </button>
+              
+              {guestPlayCount < 2 && (
+                <button 
+                  className="btn-skip"
+                  style={{ width: "100%", border: "none", background: "none", color: "var(--text-muted)", fontSize: "11px", marginTop: "4px" }}
+                  onClick={() => setShowGuestLimitModal(false)}
+                >
+                  Keep Exploring
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
