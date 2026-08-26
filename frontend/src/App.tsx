@@ -825,7 +825,7 @@ export default function App() {
             <div style={{ textAlign: "center", marginBottom: "20px" }}>
               <h2 style={{ fontSize: "24px", fontWeight: "800", color: "var(--color-gold)", letterSpacing: "-0.5px" }}>LEXARA</h2>
               <p style={{ color: "var(--text-secondary)", fontSize: "13px", marginTop: "6px" }}>
-                Spontaneous Dialect Validation Engine
+                Gamified Platform for Language Preservation
               </p>
             </div>
 
