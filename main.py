@@ -164,6 +164,20 @@ def init_db():
                 ("vincent.chidiebere@outlook.com", "vincent.chidiebere@outlook.com", "08000000000", "Vincent Chidiebere", "Vincent1993#", "Lagos, Nigeria", "Igbo", "Onitsha", 500)
             )
         conn.commit()
+        
+        # Safely migrate existing Postgres databases that might not have the points or solo_progress columns
+        try:
+            cursor.execute("ALTER TABLE users ADD COLUMN points INTEGER DEFAULT 0")
+        except Exception:
+            conn.rollback() # Required in Postgres before next try
+            pass
+        try:
+            cursor.execute("ALTER TABLE users ADD COLUMN solo_progress INTEGER DEFAULT 0")
+        except Exception:
+            conn.rollback()
+            pass
+            
+        conn.commit()
         conn.close()
     else:
         # Initialize SQLite tables
@@ -204,6 +218,18 @@ def init_db():
                 "INSERT INTO users (username, email, phone, fullname, password, location, language, dialect, points) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 ("vincent.chidiebere@outlook.com", "vincent.chidiebere@outlook.com", "08000000000", "Vincent Chidiebere", "Vincent1993#", "Lagos, Nigeria", "Igbo", "Onitsha", 500)
             )
+        conn.commit()
+        
+        # Safely migrate existing databases that might not have the points or solo_progress columns
+        try:
+            cursor.execute("ALTER TABLE users ADD COLUMN points INTEGER DEFAULT 0")
+        except Exception:
+            pass
+        try:
+            cursor.execute("ALTER TABLE users ADD COLUMN solo_progress INTEGER DEFAULT 0")
+        except Exception:
+            pass
+            
         conn.commit()
         conn.close()
 
