@@ -505,6 +505,20 @@ def health():
         "audio_storage_mode": "Cloudinary" if IS_CLOUDINARY else "Supabase" if IS_SUPABASE_STORAGE else "Local static directory"
     }
 
+@app.get("/api/admin/debug-db")
+def debug_db():
+    try:
+        conn = get_db_connection()
+        conn.close()
+        
+        # Test a query
+        rows = execute_query("SELECT * FROM users LIMIT 1")
+        return {"status": "DB connection OK", "users_columns": list(rows[0].keys()) if rows else "Empty"}
+    except Exception as e:
+        import traceback
+        return {"status": "DB connection FAILED or Query FAILED", "error": str(e), "trace": traceback.format_exc()}
+
+
 @app.get("/api/leaderboard")
 def get_leaderboard():
     # Fetch contribution count grouped by language & dialect for approved submissions
