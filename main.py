@@ -58,9 +58,13 @@ IS_SUPABASE_STORAGE = bool(SUPABASE_URL and SUPABASE_KEY)
 def get_db_connection():
     if IS_POSTGRES:
         url = DATABASE_URL
-        if "cockroachlabs.cloud" in url and "sslrootcert=" not in url:
-            separator = "&" if "?" in url else "?"
-            url += f"{separator}sslrootcert=system"
+        if "cockroachlabs.cloud" in url:
+            # Force sslmode=require instead of verify-full to bypass root certificate verification failures
+            if "sslmode=verify-full" in url:
+                url = url.replace("sslmode=verify-full", "sslmode=require")
+            elif "sslmode=" not in url:
+                separator = "&" if "?" in url else "?"
+                url += f"{separator}sslmode=require"
         return psycopg2.connect(url)
     else:
         conn = sqlite3.connect(DB_PATH)
