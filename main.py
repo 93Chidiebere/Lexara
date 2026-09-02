@@ -57,7 +57,11 @@ IS_SUPABASE_STORAGE = bool(SUPABASE_URL and SUPABASE_KEY)
 # Unified Query Executor & Database abstraction
 def get_db_connection():
     if IS_POSTGRES:
-        return psycopg2.connect(DATABASE_URL)
+        url = DATABASE_URL
+        if "cockroachlabs.cloud" in url and "sslrootcert=" not in url:
+            separator = "&" if "?" in url else "?"
+            url += f"{separator}sslrootcert=system"
+        return psycopg2.connect(url)
     else:
         conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
