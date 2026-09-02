@@ -22,9 +22,12 @@ import type { Stimulus } from "./data/stimuli";
 const getApiBase = (): string => {
   const envVal = import.meta.env.VITE_API_BASE;
   if (envVal) return envVal;
+  
+  // If no environment variable is set but we are in production, fail loudly rather than silently using localhost
   if (typeof window !== "undefined" && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
-    return "https://lexara-production-a9f2.up.railway.app";
+    console.error("VITE_API_BASE is not set in production! Please configure your environment variables.");
   }
+  
   return "http://localhost:8000";
 };
 
