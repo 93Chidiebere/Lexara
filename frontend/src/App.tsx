@@ -1313,9 +1313,9 @@ export default function App() {
                         {activeStimulus.description}
                       </p>
                     )}
-                    <div style={{ marginTop: "12px", background: "rgba(255,255,255,0.03)", padding: "10px", borderRadius: "8px", borderLeft: "3px solid var(--primary)" }}>
-                      <p style={{ fontSize: "11px", fontWeight: "600" }}>PROMPT FOR YOU:</p>
-                      <p style={{ fontSize: "12px", color: "var(--text-secondary)" }}>{activeStimulus.audioPrompt}</p>
+                    <div style={{ marginTop: "12px", background: "rgba(255,255,255,0.03)", padding: "14px 12px", borderRadius: "8px", borderLeft: "3px solid var(--primary)" }}>
+                      <p style={{ fontSize: "11px", fontWeight: "600", marginBottom: "4px" }}>PROMPT FOR YOU:</p>
+                      <p style={{ fontSize: "13.5px", color: "var(--text-secondary)", lineHeight: "1.4" }}>{activeStimulus.audioPrompt}</p>
                     </div>
                   </div>
                 </div>
@@ -1333,7 +1333,7 @@ export default function App() {
                       <p style={{ color: "var(--text-secondary)", fontSize: "12px", marginBottom: "8px", lineHeight: "1.3" }}>
                         Speak naturally in your dialect. Descriptions must be spontaneous and describe details of the prompt.
                       </p>
-                      <button className="btn btn-primary btn-record" onClick={startRecording}>
+                      <button className="btn btn-primary btn-record" onClick={startRecording} style={{ marginTop: "12px" }}>
                         <Mic size={15} />
                         <span>Tap to Record Description</span>
                       </button>
