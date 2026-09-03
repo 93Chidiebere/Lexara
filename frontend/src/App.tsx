@@ -896,7 +896,7 @@ export default function App() {
         }} title="Log Out / Switch Account">
           <Logo size={18} className="app-logo-icon" />
           <h1 className="app-logo" style={{ color: "var(--color-gold)", margin: 0, fontSize: "16px" }}>
-            {username === "vincent.chidiebere@outlook.com" ? "LEXARA ADMIN" : "LEXARA"}
+            {username === "vincent.chidiebere@outlook.com" ? "eXARA ADMIN" : "eXARA"}
           </h1>
         </div>
 
@@ -921,7 +921,7 @@ export default function App() {
           <div className="slide-up" style={{ maxWidth: "420px", margin: "20px auto 0 auto" }}>
             
             <div style={{ textAlign: "center", marginBottom: "20px" }}>
-              <h2 style={{ fontSize: "24px", fontWeight: "800", color: "var(--color-gold)", letterSpacing: "-0.5px" }}>LEXARA</h2>
+              <h2 style={{ fontSize: "24px", fontWeight: "800", color: "var(--color-gold)", letterSpacing: "-0.5px" }}>eXARA</h2>
               <p style={{ color: "var(--text-secondary)", fontSize: "13px", marginTop: "6px" }}>
                 Gamified Platform for Language Preservation
               </p>
