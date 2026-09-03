@@ -173,18 +173,41 @@ def init_db():
             )
         conn.commit()
         
-        # Safely migrate existing Postgres databases that might not have the points or solo_progress columns
-        try:
-            cursor.execute("ALTER TABLE users ADD COLUMN points INTEGER DEFAULT 0")
-        except Exception:
-            conn.rollback() # Required in Postgres before next try
-            pass
-        try:
-            cursor.execute("ALTER TABLE users ADD COLUMN solo_progress INTEGER DEFAULT 0")
-        except Exception:
-            conn.rollback()
-            pass
-            
+        # Safely migrate existing databases
+        migrations = [
+            "ALTER TABLE users ADD COLUMN xp INTEGER DEFAULT 0",
+            "ALTER TABLE users ADD COLUMN trust_score INTEGER DEFAULT 100",
+            "ALTER TABLE users ADD COLUMN gender VARCHAR(255) DEFAULT ''",
+            "ALTER TABLE users ADD COLUMN email_verified BOOLEAN DEFAULT FALSE",
+            "ALTER TABLE users ADD COLUMN phone_verified BOOLEAN DEFAULT FALSE",
+            "ALTER TABLE submissions ADD COLUMN ai_draft_text TEXT",
+            "ALTER TABLE submissions ADD COLUMN expert_corrected_text TEXT",
+            "ALTER TABLE submissions ADD COLUMN expert_audio_path TEXT"
+        ]
+        for query in migrations:
+            try:
+                cursor.execute(query)
+            except Exception:
+                if IS_POSTGRES: conn.rollback()
+                pass
+                
+        # Create pokes table
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS pokes (
+            id SERIAL PRIMARY KEY,
+            sender VARCHAR(255) NOT NULL,
+            receiver VARCHAR(255) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        ''' if IS_POSTGRES else '''
+        CREATE TABLE IF NOT EXISTS pokes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sender TEXT NOT NULL,
+            receiver TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+        ''')
+        
         conn.commit()
         conn.close()
     else:
@@ -228,16 +251,41 @@ def init_db():
             )
         conn.commit()
         
-        # Safely migrate existing databases that might not have the points or solo_progress columns
-        try:
-            cursor.execute("ALTER TABLE users ADD COLUMN points INTEGER DEFAULT 0")
-        except Exception:
-            pass
-        try:
-            cursor.execute("ALTER TABLE users ADD COLUMN solo_progress INTEGER DEFAULT 0")
-        except Exception:
-            pass
-            
+        # Safely migrate existing databases
+        migrations = [
+            "ALTER TABLE users ADD COLUMN xp INTEGER DEFAULT 0",
+            "ALTER TABLE users ADD COLUMN trust_score INTEGER DEFAULT 100",
+            "ALTER TABLE users ADD COLUMN gender VARCHAR(255) DEFAULT ''",
+            "ALTER TABLE users ADD COLUMN email_verified BOOLEAN DEFAULT FALSE",
+            "ALTER TABLE users ADD COLUMN phone_verified BOOLEAN DEFAULT FALSE",
+            "ALTER TABLE submissions ADD COLUMN ai_draft_text TEXT",
+            "ALTER TABLE submissions ADD COLUMN expert_corrected_text TEXT",
+            "ALTER TABLE submissions ADD COLUMN expert_audio_path TEXT"
+        ]
+        for query in migrations:
+            try:
+                cursor.execute(query)
+            except Exception:
+                if IS_POSTGRES: conn.rollback()
+                pass
+                
+        # Create pokes table
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS pokes (
+            id SERIAL PRIMARY KEY,
+            sender VARCHAR(255) NOT NULL,
+            receiver VARCHAR(255) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        ''' if IS_POSTGRES else '''
+        CREATE TABLE IF NOT EXISTS pokes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sender TEXT NOT NULL,
+            receiver TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+        ''')
+        
         conn.commit()
         conn.close()
 
@@ -249,13 +297,14 @@ except Exception as e:
 # Models
 class SignupRequest(BaseModel):
     username: str
-    email: str
-    phone: str
-    fullname: str
     password: str
-    location: str
-    language: str
+    email: str = ""
+    phone: str = ""
+    fullname: str = ""
+    location: str = ""
+    language: str = ""
     dialect: str = ""
+    gender: str = ""
 
 class LoginRequest(BaseModel):
     username: str
@@ -309,14 +358,18 @@ def upload_file_handler(temp_path: str, file_name: str) -> str:
 
 @app.post("/api/signup")
 def signup(req: SignupRequest):
-    # Check if user exists by username or email
-    users = execute_query("SELECT username FROM users WHERE username = %s OR email = %s", (req.username, req.email))
+    # Check if user exists by username or email (only if email is provided)
+    if req.email:
+        users = execute_query("SELECT username FROM users WHERE username = %s OR email = %s", (req.username, req.email))
+    else:
+        users = execute_query("SELECT username FROM users WHERE username = %s", (req.username,))
+        
     if users:
-        raise HTTPException(status_code=400, detail="Username or email already exists")
+        raise HTTPException(status_code=400, detail="Username (or email) already exists")
         
     execute_query(
-        "INSERT INTO users (username, email, phone, fullname, password, location, language, dialect, points, solo_progress) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 0, 0)",
-        (req.username, req.email, req.phone, req.fullname, req.password, req.location, req.language, req.dialect if req.dialect else None)
+        "INSERT INTO users (username, email, phone, fullname, password, location, language, dialect, points, solo_progress, xp, gender) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 0, 0, 0, %s)",
+        (req.username, req.email, req.phone, req.fullname, req.password, req.location, req.language, req.dialect if req.dialect else None, req.gender)
     )
     return {"message": "Signup successful", "username": req.username}
 
@@ -336,8 +389,13 @@ def login(req: LoginRequest):
         "location": user["location"],
         "language": user["language"],
         "dialect": user["dialect"] if user["dialect"] else "",
-        "points": user["points"],
-        "solo_progress": user["solo_progress"]
+        "points": user.get("points", 0),
+        "solo_progress": user.get("solo_progress", 0),
+        "xp": user.get("xp", 0),
+        "gender": user.get("gender", ""),
+        "trust_score": user.get("trust_score", 100),
+        "email_verified": user.get("email_verified", False),
+        "phone_verified": user.get("phone_verified", False)
     }
 
 @app.post("/api/upload-audio")
@@ -377,6 +435,7 @@ async def validate(
     username: str = Form(...),
     image_id: str = Form(...)
 ):
+    import uuid, datetime
     file_ext = os.path.splitext(audio.filename)[1] if audio.filename else ".wav"
     audio_file_name = f"{uuid.uuid4()}{file_ext}"
     temp_audio_path = AUDIO_DIR / audio_file_name
@@ -393,83 +452,113 @@ async def validate(
         try:
             transcription_text = transcribe_audio(str(temp_audio_path))
         except Exception:
-            transcription_text = "Spontaneous description recorded."
+            transcription_text = "[AI Transcription Failed]"
             
         word_count = len(transcription_text.split())
-        
-        if image_id.startswith("scenario-"):
-            is_fully_valid = word_count >= 8
-            result = {
-                "accept": is_fully_valid,
-                "confidence": 95 if is_fully_valid else 50,
-                "feedback_message": "Scenario validation successful!" if is_fully_valid else "Please describe the scenario in more detail (at least 8 words)."
-            }
-        else:
-            from validate_description import validate_description
-            result = validate_description(image_path, str(temp_audio_path), language)
         
         users = execute_query("SELECT * FROM users WHERE username = %s", (username,))
         user = users[0] if users else None
         
-        current_points = user["points"] if user else 120
-        current_progress = user["solo_progress"] if user else 0
+        current_xp = user.get("xp", 0) if user else 0
         
-        points_earned = 0
+        # In V4, AI acts as a drafting assistant. The submission goes to human validators.
+        # We award 10 XP immediately to gamify data input.
+        is_sufficient = word_count >= 3
         
-        is_fully_valid = (
-            result.get("accept", False) and 
-            result.get("confidence", 0) >= 80 and 
-            word_count >= 8
-        )
-        
-        if is_fully_valid:
-            current_progress += 1
-            if current_progress >= 10:
-                points_earned = 1
-                current_points += 1
-                current_progress = 0
-            status = 'approved'
+        if is_sufficient:
+            current_xp += 10
+            status = 'pending_expert'
         else:
-            status = 'pending'
+            status = 'rejected' # Too short, auto-reject
             
-        if user:
-            execute_query(
-                "UPDATE users SET points = %s, solo_progress = %s WHERE username = %s",
-                (current_points, current_progress, username)
-            )
+        if user and is_sufficient:
+            execute_query("UPDATE users SET xp = %s WHERE username = %s", (current_xp, username))
             
         audio_url = upload_file_handler(str(temp_audio_path), audio_file_name)
         
-        # Cleanup local audio file if uploaded to cloud
         if (IS_CLOUDINARY or IS_SUPABASE_STORAGE) and temp_audio_path.exists():
             temp_audio_path.unlink()
             
+        created_at = datetime.datetime.utcnow().isoformat() + "Z"
         execute_query(
-            """INSERT INTO submissions (username, image_id, transcription, audio_path, dialect, language, agreement_score, consensus_text, status, created_at)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
-            (username, image_id, transcription_text, audio_url, dialect, language, 
-             result.get("confidence", 0), transcription_text, status, datetime.now().isoformat())
+            "INSERT INTO submissions (username, image_id, transcription, ai_draft_text, audio_path, dialect, language, status, created_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+            (username, image_id, transcription_text, transcription_text, audio_url, dialect, language, status, created_at)
         )
         
-        return {
-            "confidence": result.get("confidence", 0),
-            "accept": is_fully_valid,
-            "feedback_message": result.get("feedback_message", ""),
-            "transcription": transcription_text,
-            "points_earned": points_earned,
-            "progress_increment": 1 if is_fully_valid else 0,
-            "new_progress": current_progress,
-            "new_points": current_points,
-            "language_detected": result.get("language_detected", language)
-        }
-        
-    except Exception as e:
-        if temp_audio_path.exists():
-            temp_audio_path.unlink()
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
         if os.path.exists(image_path):
-            os.unlink(image_path)
+            os.remove(image_path)
+            
+        return {
+            "accept": is_sufficient,
+            "confidence": 100 if is_sufficient else 0,
+            "feedback_message": "Submission sent to the Studio for Expert Validation! +10 XP" if is_sufficient else "Audio too short.",
+            "points_earned": 10 if is_sufficient else 0,
+            "xp": current_xp
+        }
+    except Exception as e:
+        if (IS_CLOUDINARY or IS_SUPABASE_STORAGE) and 'temp_audio_path' in locals() and temp_audio_path.exists():
+            temp_audio_path.unlink()
+        if 'image_path' in locals() and os.path.exists(image_path):
+            os.remove(image_path)
+        raise HTTPException(status_code=500, detail=str(e))
+
+# STUDIO (EXPERT VALIDATION) ENDPOINTS
+@app.get("/api/studio/queue")
+def get_studio_queue(language: str):
+    # Fetch up to 10 pending submissions for the expert's language
+    rows = execute_query(
+        "SELECT id, username, image_id, ai_draft_text, audio_path, dialect, created_at FROM submissions WHERE status = 'pending_expert' AND language = %s ORDER BY created_at ASC LIMIT 10",
+        (language,)
+    )
+    return rows or []
+
+@app.post("/api/studio/submit")
+def submit_expert_validation(
+    submission_id: int = Form(...),
+    username: str = Form(...),
+    corrected_text: str = Form(...),
+    corrected_audio: UploadFile = File(None)
+):
+    import uuid
+    expert_audio_url = None
+    if corrected_audio:
+        file_ext = os.path.splitext(corrected_audio.filename)[1] if corrected_audio.filename else ".wav"
+        audio_file_name = f"expert_{uuid.uuid4()}{file_ext}"
+        temp_audio_path = AUDIO_DIR / audio_file_name
+        
+        content = corrected_audio.file.read()
+        with open(temp_audio_path, "wb") as f:
+            f.write(content)
+            
+        try:
+            expert_audio_url = upload_file_handler(str(temp_audio_path), audio_file_name)
+        except Exception as e:
+            pass
+        finally:
+            if (IS_CLOUDINARY or IS_SUPABASE_STORAGE) and temp_audio_path.exists():
+                temp_audio_path.unlink()
+
+    # Update submission
+    execute_query(
+        "UPDATE submissions SET status = 'approved', expert_corrected_text = %s, expert_audio_path = %s WHERE id = %s",
+        (corrected_text, expert_audio_url, submission_id)
+    )
+    
+    # Reward Expert with Coins (Points)
+    users = execute_query("SELECT points FROM users WHERE username = %s", (username,))
+    if users:
+        current_points = users[0].get("points", 0) + 5  # Give 5 coins for validation
+        execute_query("UPDATE users SET points = %s WHERE username = %s", (current_points, username))
+        
+    return {"message": "Validation submitted!", "coins_earned": 5}
+
+@app.post("/api/users/poke")
+def poke_user(req: dict):
+    sender = req.get("sender")
+    receiver = req.get("receiver")
+    execute_query("INSERT INTO pokes (sender, receiver) VALUES (%s, %s)", (sender, receiver))
+    return {"message": f"Successfully poked {receiver}!"}
+
 
 @app.get("/api/user/completed_stimuli/{username}")
 def get_completed_stimuli(username: str, language: str, dialect: str):
