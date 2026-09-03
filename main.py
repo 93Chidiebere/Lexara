@@ -26,7 +26,7 @@ app = FastAPI()
 # Enable CORS for the frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://lexara-phi.vercel.app", "http://localhost:5173", "https://lexara.vercel.app"],
+    allow_origins=["*"],
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
