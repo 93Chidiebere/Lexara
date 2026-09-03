@@ -1186,67 +1186,6 @@ export default function App() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <h2 style={{ fontSize: "20px", color: "var(--primary)", margin: 0 }}>Solo Mode</h2>
               </div>
-
-              {/* Row 2: Dialect selector and status badge */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  <span style={{ fontSize: "11.5px", color: "var(--text-secondary)", fontWeight: "500" }}>
-                    Dialect:
-                  </span>
-                  {((LANGUAGES_AND_DIALECTS as any)[language] || []).length > 0 ? (
-                    <select 
-                      value={activeDialect} 
-                      onChange={(e) => setActiveDialect(e.target.value)}
-                      className="form-input"
-                      style={{ padding: "3px 8px", fontSize: "11px", width: "auto", height: "26px", display: "inline-block" }}
-                    >
-                      <option value="">Choose Dialect</option>
-                      {((LANGUAGES_AND_DIALECTS as any)[language] || []).map((d: string) => (
-                        <option key={d} value={d}>{d}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input 
-                      type="text"
-                      value={activeDialect}
-                      onChange={(e) => setActiveDialect(e.target.value)}
-                      placeholder="Type Dialect"
-                      className="form-input"
-                      style={{ padding: "3px 8px", fontSize: "11px", width: "90px", height: "26px", display: "inline-block" }}
-                    />
-                  )}
-                  <span 
-                    onClick={() => {
-                      setIsRegistered(false);
-                      setCurrentScreen("onboarding");
-                    }} 
-                    style={{ 
-                      color: "var(--primary)", 
-                      textDecoration: "underline", 
-                      cursor: "pointer", 
-                      fontSize: "11px",
-                      fontWeight: "600",
-                      marginLeft: "4px"
-                    }}
-                  >
-                    Change Language
-                  </span>
-                </div>
-
-                <span className={`status-pill ${backendStatus}`} style={{
-                  fontSize: "10px",
-                  padding: "3px 8px",
-                  borderRadius: "4px",
-                  border: "1px solid var(--border-subtle)",
-                  backgroundColor: "var(--bg-card)",
-                  color: "var(--text-secondary)",
-                  fontWeight: "500",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.5px"
-                }}>
-                  {backendStatus === "online" ? "AI Engine Online" : "AI Simulation"}
-                </span>
-              </div>
             </div>
 
             {/* Stimulus display card */}
