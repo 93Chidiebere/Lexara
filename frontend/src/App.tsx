@@ -12,6 +12,9 @@ import {
   AlertTriangle,
   RotateCcw,
   ShieldCheck,
+  User,
+  Hand,
+  Settings,
   Plus,
   ChevronLeft,
   ChevronRight
@@ -84,8 +87,12 @@ export default function App() {
   const [signupDialect, setSignupDialect] = useState<string>("");
 
   const [language, setLanguage] = useState<string>("Igbo");
-  const [points, setPoints] = useState<number>(0); // Starting points is 0!
+  const [points, setPoints] = useState<number>(0);
   const [soloProgress, setSoloProgress] = useState<number>(0);
+  const [xp, setXp] = useState<number>(0);
+  const [trustScore, setTrustScore] = useState<number>(100);
+  const [gender, setGender] = useState<string>("");
+  const [studioQueue, setStudioQueue] = useState<any[]>([]);
   const [activeDialect, setActiveDialect] = useState<string>(""); // chosen dynamically during gameplay
   const [errorMsg, setErrorMsg] = useState<string>("");
   const [successMsg, setSuccessMsg] = useState<string>("");
@@ -1994,187 +2001,128 @@ export default function App() {
           </div>
         )}
 
-        {/* SCREEN 5: WALLET REDEMPTION */}
-        {isRegistered && currentScreen === "wallet" && (
-          <div className="slide-up" style={{ maxWidth: "420px", margin: "0 auto", display: "flex", flexDirection: "column", gap: "16px" }}>
-            <h2 style={{ fontSize: "20px" }}>Wallet & Coin Redemption</h2>
-            <div className="glass-card points-card" style={{ padding: "20px", textAlign: "center", background: "linear-gradient(135deg, #1A1A1D, #000)" }}>
-              <Coins size={36} color="var(--primary)" style={{ margin: "0 auto 10px auto" }} />
-              <span style={{ fontSize: "12px", color: "var(--text-secondary)", textTransform: "uppercase" }}>Current Balance</span>
-              <h3 style={{ fontSize: "32px", fontWeight: "800", color: "white", marginTop: "4px" }}>{points} Coins</h3>
-              <p style={{ color: "var(--primary)", fontSize: "14px", fontWeight: "600", marginTop: "4px" }}>
-                Valued at: ₦{points}.00 NGN (1 Coin = ₦1.00 Naira)
-              </p>
-            </div>
-
-            {/* Solo Progress Tracker */}
-            <div className="glass-card" style={{ padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <Award size={16} color="var(--primary)" />
-                <span style={{ fontSize: "13px", fontWeight: "600" }}>Solo Coin Progress: {soloProgress} / 10 verified descriptions</span>
+        {/* SCREEN 5: ME (PROFILE & WALLET) */}
+        {isRegistered && currentScreen === "me" && (
+          <div className="slide-up" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "16px", paddingBottom: "16px", borderBottom: "1px solid var(--border-subtle)" }}>
+              <div style={{ width: "60px", height: "60px", borderRadius: "50%", background: "var(--primary-dark)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <User size={30} color="var(--primary)" />
               </div>
-              <div style={{ width: "120px", background: "var(--bg-dark)", height: "6px", borderRadius: "3px", overflow: "hidden" }}>
-                <div style={{ width: `${soloProgress * 10}%`, background: "var(--primary)", height: "100%", transition: "width 0.3s ease" }}></div>
+              <div>
+                <h2 style={{ fontSize: "20px", fontWeight: "bold" }}>@{username}</h2>
+                <div style={{ fontSize: "13px", color: "var(--text-secondary)" }}>{xp} XP • {trustScore}% Trust Score</div>
               </div>
             </div>
 
-            <div className="glass-card" style={{ padding: "20px" }}>
-              <h3 style={{ fontSize: "15px", marginBottom: "12px" }}>Convert Coins to Mobile Airtime</h3>
+            {/* Wallet Section */}
+            <div className="glass-card points-card" style={{ padding: "20px", display: "flex", justifyContent: "space-between", alignItems: "center", background: "linear-gradient(135deg, #1A1A1D, #000)" }}>
+              <div>
+                <div style={{ fontSize: "12px", color: "var(--text-secondary)", marginBottom: "4px" }}>Available Balance</div>
+                <div style={{ fontSize: "28px", fontWeight: "700", color: "var(--color-gold)", display: "flex", alignItems: "center", gap: "8px" }}>
+                  <Coins size={24} /> {points} Coins
+                </div>
+              </div>
+              <button className="btn-primary" style={{ padding: "8px 16px", background: "var(--color-gold)", color: "#000", fontWeight: "bold", fontSize: "13px" }}>
+                Withdraw
+              </button>
+            </div>
+
+            {/* Progression to Studio */}
+            <div className="glass-card" style={{ padding: "16px", borderTop: "3px solid var(--primary)" }}>
+              <h3 style={{ fontSize: "15px", marginBottom: "12px", display: "flex", alignItems: "center", gap: "8px" }}><ShieldCheck size={16} /> Path to Validator</h3>
+              <div style={{ fontSize: "12px", color: "var(--text-secondary)", marginBottom: "8px" }}>
+                Earn 500 XP to unlock the Studio tab and earn coins by verifying others' recordings.
+              </div>
+              <div style={{ width: "100%", background: "#222", height: "8px", borderRadius: "4px", overflow: "hidden" }}>
+                <div style={{ width: `${Math.min(100, (xp / 500) * 100)}%`, background: "var(--primary)", height: "100%" }}></div>
+              </div>
+              <div style={{ fontSize: "11px", textAlign: "right", marginTop: "4px", color: "#888" }}>{Math.min(500, xp)} / 500 XP</div>
+            </div>
+
+            {/* Settings & Preferences */}
+            <div className="glass-card" style={{ padding: "16px" }}>
+              <h3 style={{ fontSize: "15px", marginBottom: "16px", display: "flex", alignItems: "center", gap: "8px" }}><Settings size={16} /> Account Preferences</h3>
+              
               <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                 <div>
-                  <label style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "var(--text-secondary)", marginBottom: "4px" }}>Select Telecom Carrier</label>
-                  <select className="form-input">
-                    <option>MTN Nigeria</option>
-                    <option>Airtel Nigeria</option>
-                    <option>Glo Nigeria</option>
-                    <option>9mobile Nigeria</option>
+                  <label style={{ fontSize: "12px", color: "var(--text-secondary)", display: "block", marginBottom: "4px" }}>Language</label>
+                  <select 
+                    value={language} 
+                    onChange={(e) => {
+                      setLanguage(e.target.value);
+                      setActiveDialect(""); // Reset dialect when language changes
+                    }}
+                    className="app-input"
+                  >
+                    {Object.keys(LANGUAGES_AND_DIALECTS).map(lang => (
+                      <option key={lang} value={lang}>{lang}</option>
+                    ))}
                   </select>
                 </div>
+                
                 <div>
-                  <label style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "var(--text-secondary)", marginBottom: "4px" }}>Phone Number</label>
-                  <input type="tel" placeholder="e.g. 08031234567" className="form-input" />
+                  <label style={{ fontSize: "12px", color: "var(--text-secondary)", display: "block", marginBottom: "4px" }}>Dialect</label>
+                  <select 
+                    value={activeDialect} 
+                    onChange={(e) => setActiveDialect(e.target.value)}
+                    className="app-input"
+                  >
+                    <option value="">Select Dialect...</option>
+                    {(LANGUAGES_AND_DIALECTS as Record<string, string[]>)[language]?.map((d: string) => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
                 </div>
+
                 <div>
-                  <label style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "var(--text-secondary)", marginBottom: "4px" }}>Coins to Redeem</label>
-                  <input type="number" defaultValue={50} min={10} max={points} className="form-input" />
+                  <label style={{ fontSize: "12px", color: "var(--text-secondary)", display: "block", marginBottom: "4px" }}>Gender</label>
+                  <select 
+                    value={gender} 
+                    onChange={(e) => setGender(e.target.value)}
+                    className="app-input"
+                  >
+                    <option value="">Select Gender...</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                  </select>
                 </div>
-                <button
-                  className="btn btn-primary"
-                  onClick={() => {
-                    alert(`Airtime request submitted! ₦${50} airtime will be processed shortly.`);
-                    setPoints(prev => Math.max(0, prev - 50));
-                  }}
-                  disabled={points < 50}
-                >
-                  Confirm Instant Airtime Recharge
-                </button>
               </div>
             </div>
           </div>
         )}
 
-        {/* SCREEN 6: LINGUISTIC DIALECT BRIDGE */}
-        {isRegistered && currentScreen === "bridge" && (
+        {/* SCREEN 6: EXPERT STUDIO */}
+        {isRegistered && currentScreen === "studio" && (
           <div className="slide-up" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <h2 style={{ fontSize: "20px", color: "var(--color-gold)" }}>Dialect Bridge</h2>
-                <p style={{ fontSize: "11px", color: "var(--text-secondary)", marginTop: "2px" }}>
-                  Compare orthography shifts across dialects and tribes.
+            <h2 style={{ fontSize: "20px", color: "var(--primary)", display: "flex", alignItems: "center", gap: "8px" }}>
+              <ShieldCheck size={20} /> Validation Studio
+            </h2>
+            
+            {xp < 500 ? (
+              <div className="glass-card" style={{ padding: "30px 20px", textAlign: "center", marginTop: "20px" }}>
+                <ShieldCheck size={48} color="#555" style={{ margin: "0 auto 16px auto" }} />
+                <h3 style={{ fontSize: "18px", marginBottom: "8px" }}>Studio is Locked</h3>
+                <p style={{ fontSize: "14px", color: "var(--text-secondary)", lineHeight: "1.5" }}>
+                  You must earn 500 XP by playing Solo mode before you can become a Language Expert. Keep submitting great descriptions!
                 </p>
-              </div>
-              <div style={{ display: "flex", gap: "6px" }}>
-                <button className="btn-skip" onClick={prevStimulus} style={{ padding: "4px 8px" }}>Prev</button>
-                <button className="btn-skip" onClick={nextStimulus} style={{ padding: "4px 8px" }}>Next</button>
-              </div>
-            </div>
-
-            {/* Stimulus Card info */}
-            {!activeStimulus ? (
-              <div className="glass-card" style={{ padding: "40px 20px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: "12px" }}>
-                <Award size={36} color="var(--color-gold)" style={{ margin: "0 auto" }} />
-                <h4 style={{ color: "var(--color-gold)", fontWeight: "700" }}>All Comparisons Completed!</h4>
-                <p style={{ fontSize: "11px", color: "var(--text-secondary)" }}>
-                  You have completed all available stimuli for bridge comparisons.
-                </p>
+                <div style={{ marginTop: "20px", color: "var(--color-gold)", fontWeight: "bold" }}>Current XP: {xp} / 500</div>
               </div>
             ) : (
-              <>
-                <div className="glass-card" style={{ padding: "12px", display: "flex", gap: "12px", alignItems: "center" }}>
-                  {!activeStimulus.isScenario ? (
-                    <img 
-                      src={activeStimulus.imageUrl || ""}
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1508213981460-0722d4f215d1?auto=format&fit=crop&w=600&q=80";
-                      }}
-                      alt="Stimulus" 
-                      style={{ width: "60px", height: "60px", borderRadius: "6px", objectFit: "cover" }} 
-                    />
-                  ) : (
-                    <div style={{ 
-                      width: "60px", 
-                      height: "60px", 
-                      borderRadius: "6px", 
-                      background: "linear-gradient(135deg, #1B3622 0%, #16171A 100%)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      color: "var(--color-gold)",
-                      fontWeight: "800",
-                      fontSize: "20px"
-                    }}>
-                      “
-                    </div>
-                  )}
-                  <div>
-                    <span style={{ fontSize: "10px", color: "var(--color-gold)", textTransform: "uppercase", fontWeight: "600" }}>{activeStimulus.category}</span>
-                    <h4 style={{ fontSize: "14px", color: "white" }}>{activeStimulus.title}</h4>
-                  </div>
-                </div>
-
-                <div className="glass-card" style={{ padding: "16px" }}>
-                  <div style={{ display: "flex", gap: "10px", marginBottom: "16px" }}>
-                    <div style={{ flex: 1 }}>
-                      <label style={{ display: "block", fontSize: "11px", color: "var(--text-secondary)", marginBottom: "4px" }}>Source Dialect</label>
-                      <select 
-                        className="form-input" 
-                        value={sourceDialect}
-                        onChange={(e) => setSourceDialect(e.target.value)}
-                      >
-                        {availableDialects.map(d => (
-                          <option key={d} value={d}>{d}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <label style={{ display: "block", fontSize: "11px", color: "var(--text-secondary)", marginBottom: "4px" }}>Target Dialect</label>
-                      <select 
-                        className="form-input" 
-                        value={targetDialect}
-                        onChange={(e) => setTargetDialect(e.target.value)}
-                      >
-                        {availableDialects.map(d => (
-                          <option key={d} value={d}>{d}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div style={{ background: "#16171A", padding: "12px", borderRadius: "6px", border: "1px solid var(--border-subtle)" }}>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                      <div>
-                        <span style={{ fontSize: "10px", textTransform: "uppercase", color: "var(--color-gold)" }}>
-                          Source Text ({sourceDialect || "None"})
-                        </span>
-                        <p style={{ fontSize: "14px", fontStyle: "italic", marginTop: "2px", color: "white" }}>
-                          "{getTranslationText(sourceDialect).text}"
-                        </p>
-                        {getTranslationText(sourceDialect).source && (
-                          <span style={{ fontSize: "9px", color: "var(--text-secondary)" }}>
-                            Origin: {getTranslationText(sourceDialect).source}
-                          </span>
-                        )}
-                      </div>
-                      
-                      <hr style={{ border: "none", borderTop: "1px dashed var(--border-subtle)" }} />
-                      
-                      <div>
-                        <span style={{ fontSize: "10px", textTransform: "uppercase", color: "var(--success)" }}>
-                          Target Text ({targetDialect || "None"})
-                        </span>
-                        <p style={{ fontSize: "14px", fontStyle: "italic", marginTop: "2px", color: "white" }}>
-                          "{getTranslationText(targetDialect).text}"
-                        </p>
-                        {getTranslationText(targetDialect).source && (
-                          <span style={{ fontSize: "9px", color: "var(--text-secondary)" }}>
-                            Origin: {getTranslationText(targetDialect).source}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </>
+              <div className="glass-card" style={{ padding: "20px", textAlign: "center" }}>
+                <p style={{ fontSize: "14px", color: "var(--text-secondary)" }}>
+                  (Studio Queue UI goes here. Fetching from /api/studio/queue...)
+                </p>
+                <button className="btn-primary" style={{ marginTop: "16px" }} onClick={async () => {
+                   try {
+                     const res = await fetch(`${getApiBase()}/api/studio/queue?language=${language}`);
+                     if(res.ok) {
+                        const data = await res.json();
+                        setStudioQueue(data);
+                        alert(`Found ${data.length} pending submissions to validate!`);
+                     }
+                   } catch(e) {}
+                }}>Load Pending Submissions</button>
+              </div>
             )}
           </div>
         )}
@@ -2240,28 +2188,28 @@ export default function App() {
               if (isGuest) {
                 setShowGuestLimitModal(true);
               } else {
-                setCurrentScreen("bridge");
+                setCurrentScreen("studio");
               }
             }} 
-            className={`nav-item ${currentScreen === "bridge" ? "active" : ""} ${isGuest ? "nav-item-disabled" : ""}`}
+            className={`nav-item ${currentScreen === "studio" ? "active" : ""} ${isGuest ? "nav-item-disabled" : ""}`}
             style={isGuest ? { opacity: 0.5 } : {}}
           >
-            <BookOpen size={15} />
-            <span>Bridge</span>
+            <ShieldCheck size={15} />
+            <span>Studio</span>
           </button>
           <button 
             onClick={() => {
               if (isGuest) {
                 setShowGuestLimitModal(true);
               } else {
-                setCurrentScreen("wallet");
+                setCurrentScreen("me");
               }
             }} 
-            className={`nav-item ${currentScreen === "wallet" ? "active" : ""} ${isGuest ? "nav-item-disabled" : ""}`}
+            className={`nav-item ${currentScreen === "me" ? "active" : ""} ${isGuest ? "nav-item-disabled" : ""}`}
             style={isGuest ? { opacity: 0.5 } : {}}
           >
-            <Wallet size={15} />
-            <span>Wallet</span>
+            <User size={15} />
+            <span>Me</span>
           </button>
           <button 
             onClick={() => {
