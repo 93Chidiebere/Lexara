@@ -885,7 +885,7 @@ export default function App() {
   return (
     <div className="app-container">
       {/* Top Application Bar */}
-      <header className="app-header">
+      <header className="app-header" style={{ padding: "10px 16px" }}>
         <div className="app-title-group" style={{ cursor: "pointer" }} onClick={() => {
           localStorage.removeItem("lexara_user");
           setIsGuest(true);
@@ -895,43 +895,19 @@ export default function App() {
           if (wsRef.current) wsRef.current.close();
         }} title="Log Out / Switch Account">
           <Logo size={18} className="app-logo-icon" />
-          <h1 className="app-logo" style={{ color: "var(--color-gold)" }}>
+          <h1 className="app-logo" style={{ color: "var(--color-gold)", margin: 0, fontSize: "16px" }}>
             {username === "vincent.chidiebere@outlook.com" ? "LEXARA ADMIN" : "LEXARA"}
           </h1>
         </div>
 
         {isRegistered && (
           <div style={{ display: "flex", gap: "8px" }}>
-            {/* User Level */}
-            {username !== "vincent.chidiebere@outlook.com" && (
-              <div className="user-status-badge">
-                <Award size={13} color="var(--text-secondary)" />
-                <span>Lvl {points >= 30 ? 3 : points >= 15 ? 2 : 1}</span>
+            {/* Language & Dialect */}
+            {username !== "vincent.chidiebere@outlook.com" && currentScreen === "solo" && (
+              <div className="user-status-badge" style={{ background: "rgba(30, 41, 59, 0.5)", border: "1px solid var(--border-subtle)", padding: "4px 8px" }}>
+                <span style={{ color: "var(--text-secondary)", fontSize: "11px" }}>{language}:</span>
+                <span style={{ color: "var(--primary)", fontWeight: "600", marginLeft: "4px", fontSize: "11px" }}>{activeDialect || "Standard"}</span>
               </div>
-            )}
-
-            {/* Wallet Tracker */}
-            {username !== "vincent.chidiebere@outlook.com" && (
-              <div className="user-status-badge points-badge" onClick={() => setCurrentScreen("wallet")}>
-                <Coins size={13} color="var(--color-gold)" />
-                <span>{points} Pts</span>
-              </div>
-            )}
-            
-            {/* Admin Dashboard Exit/Logout */}
-            {username === "vincent.chidiebere@outlook.com" && (
-              <button 
-                onClick={() => {
-                  setIsRegistered(false);
-                  setCurrentScreen("onboarding");
-                  setUsername("");
-                  setLoginPassword("");
-                }}
-                className="btn-skip"
-                style={{ borderColor: "var(--danger)", color: "var(--danger)", padding: "4px 10px", fontSize: "11px" }}
-              >
-                Log Out
-              </button>
             )}
           </div>
         )}
@@ -1180,8 +1156,8 @@ export default function App() {
 
         {/* SCREEN 2: SOLO PLAY MODE */}
         {isRegistered && currentScreen === "solo" && (
-          <div className="slide-up" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: "10px", borderBottom: "1px solid var(--border-subtle)", paddingBottom: "12px" }}>
+          <div className="slide-up" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px", borderBottom: "1px solid var(--border-subtle)", paddingBottom: "6px" }}>
               {/* Row 1: Title */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <h2 style={{ fontSize: "20px", color: "var(--primary)", margin: 0 }}>Solo Mode</h2>
@@ -1345,7 +1321,7 @@ export default function App() {
                 </div>
 
                 {/* Mic / Audio Panel */}
-                <div className="glass-card mic-panel" style={{ padding: "20px", textAlign: "center" }}>
+                <div className="glass-card mic-panel" style={{ padding: "12px", textAlign: "center" }}>
                   {errorMsg && (
                     <div className="alert alert-error" style={{ marginBottom: "16px", fontSize: "12px" }}>
                       {errorMsg}
@@ -1354,7 +1330,7 @@ export default function App() {
 
                   {!audioUrl && !isRecording && (
                     <div>
-                      <p style={{ color: "var(--text-secondary)", fontSize: "13px", marginBottom: "16px" }}>
+                      <p style={{ color: "var(--text-secondary)", fontSize: "12px", marginBottom: "8px", lineHeight: "1.3" }}>
                         Speak naturally in your dialect. Descriptions must be spontaneous and describe details of the prompt.
                       </p>
                       <button className="btn btn-primary btn-record" onClick={startRecording}>
