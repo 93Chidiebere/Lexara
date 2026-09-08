@@ -448,13 +448,10 @@ async def validate(
         image_path = tmp_image.name
 
     try:
-        from validate_description import transcribe_audio
-        try:
-            transcription_text = transcribe_audio(str(temp_audio_path))
-        except Exception:
-            transcription_text = "[AI Transcription Failed]"
-            
-        word_count = len(transcription_text.split())
+        # Pure HITL Architecture: We no longer use AI ASR.
+        # Human validators will transcribe/correct the audio entirely from scratch.
+        transcription_text = ""
+        word_count = 3 # Bypass word count check for initial submission, rely on experts
         
         users = execute_query("SELECT * FROM users WHERE username = %s", (username,))
         user = users[0] if users else None
