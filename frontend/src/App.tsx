@@ -71,6 +71,8 @@ export default function App() {
   const [showGuestSetupModal, setShowGuestSetupModal] = useState<boolean>(false);
   const [guestLang, setGuestLang] = useState<string>("Igbo");
   const [guestDialect, setGuestDialect] = useState<string>("");
+  const [guestCustomLang, setGuestCustomLang] = useState<string>("");
+  const [signupCustomLang, setSignupCustomLang] = useState<string>("");
     const [showEnterpriseModal, setShowEnterpriseModal] = useState<boolean>(false);
   const [entCompany, setEntCompany] = useState("");
   const [entEmail, setEntEmail] = useState("");
@@ -453,6 +455,11 @@ export default function App() {
       return;
     }
 
+    if (authTab === "signup" && signupLanguage.startsWith("Others") && !signupCustomLang.trim()) {
+      setErrorMsg("Please specify your language.");
+      return;
+    }
+
     const payload = authTab === "login" ? {
       username: username,
       password: loginPassword
@@ -463,7 +470,7 @@ export default function App() {
       fullname: signupFullName,
       password: signupPassword,
       location: signupLocation,
-      language: signupLanguage,
+      language: signupLanguage.startsWith("Others") ? signupCustomLang.trim() : signupLanguage,
       dialect: signupDialect
     };
 
@@ -1131,11 +1138,27 @@ export default function App() {
                       </select>
                     </div>
 
+                    {signupLanguage.startsWith("Others") && (
+                      <div>
+                        <label style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "var(--text-secondary)", marginBottom: "4px" }}>
+                          Specify Your Language
+                        </label>
+                        <input
+                          type="text"
+                          value={signupCustomLang}
+                          onChange={(e) => setSignupCustomLang(e.target.value)}
+                          placeholder="e.g. Efik, Ibibio, Tiv"
+                          className="form-input"
+                          required
+                        />
+                      </div>
+                    )}
+
                     <div>
                       <label style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "var(--text-secondary)", marginBottom: "4px" }}>
                         Dialect (Optional)
                       </label>
-                      {signupLanguage && ((LANGUAGES_AND_DIALECTS as any)[signupLanguage] || []).length > 0 ? (
+                      {signupLanguage && !signupLanguage.startsWith("Others") && ((LANGUAGES_AND_DIALECTS as any)[signupLanguage] || []).length > 0 ? (
                         <select
                           value={signupDialect}
                           onChange={(e) => setSignupDialect(e.target.value)}
@@ -2334,9 +2357,22 @@ export default function App() {
                 </select>
               </div>
               
+              {guestLang.startsWith("Others") && (
+                <div>
+                  <label style={{ fontSize: "12px", fontWeight: "600", color: "var(--text-secondary)", display: "block", marginBottom: "4px" }}>Specify Your Language</label>
+                  <input
+                    type="text"
+                    value={guestCustomLang}
+                    onChange={(e) => setGuestCustomLang(e.target.value)}
+                    placeholder="e.g. Efik, Ibibio, Tiv"
+                    className="form-input"
+                  />
+                </div>
+              )}
+
               <div>
                 <label style={{ fontSize: "12px", fontWeight: "600", color: "var(--text-secondary)", display: "block", marginBottom: "4px" }}>Dialect (Optional)</label>
-                {guestLang && ((LANGUAGES_AND_DIALECTS as any)[guestLang] || []).length > 0 ? (
+                {guestLang && !guestLang.startsWith("Others") && ((LANGUAGES_AND_DIALECTS as any)[guestLang] || []).length > 0 ? (
                   <select
                     value={guestDialect}
                     onChange={(e) => setGuestDialect(e.target.value)}
@@ -2361,7 +2397,13 @@ export default function App() {
               <button 
                 className="btn btn-primary" 
                 style={{ marginTop: "12px" }}
-                onClick={() => initGuestMode(guestLang, guestDialect)}
+                onClick={() => {
+                  if (guestLang.startsWith("Others") && !guestCustomLang.trim()) {
+                    alert("Please specify your language.");
+                    return;
+                  }
+                  initGuestMode(guestLang.startsWith("Others") ? guestCustomLang.trim() : guestLang, guestDialect);
+                }}
               >
                 Start Demo
               </button>
