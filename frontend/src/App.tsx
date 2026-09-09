@@ -22,6 +22,41 @@ import {
 import { STIMULI, LANGUAGES_AND_DIALECTS } from "./data/stimuli";
 import type { Stimulus } from "./data/stimuli";
 
+
+const DOMAINS = [
+  { id: "General", icon: "🌍", label: "General" },
+  { id: "Food", icon: "🍲", label: "The Kitchen" },
+  { id: "Healthcare", icon: "⚕️", label: "The Clinic" },
+  { id: "Agriculture", icon: "🌾", label: "The Harvest" },
+  { id: "Commerce", icon: "⚖️", label: "The Marketplace" },
+  { id: "Legal", icon: "🏛️", label: "The Courthouse" },
+  { id: "Education", icon: "📚", label: "The Classroom" },
+  { id: "Crafts", icon: "⚒️", label: "The Workshop" },
+  { id: "Culture", icon: "🎭", label: "The Shrine" },
+  { id: "Governance", icon: "👑", label: "The Palace" },
+  { id: "Entertainment", icon: "🥁", label: "The Stage" },
+  { id: "Transport", icon: "🚐", label: "The Motorpark" },
+  { id: "Finance", icon: "🏦", label: "The Bank" },
+  { id: "Technology", icon: "💻", label: "The Tech Hub" },
+  { id: "Sports", icon: "⚽", label: "The Stadium" },
+  { id: "Media", icon: "📰", label: "The Newsroom" },
+  { id: "Livestock", icon: "🐐", label: "The Farmhouse" },
+  { id: "Maritime", icon: "🛶", label: "The Port" },
+  { id: "Environment", icon: "🌳", label: "The Forest" },
+  { id: "Family", icon: "👨‍👩‍👧‍👦", label: "The Home" },
+  { id: "Fashion", icon: "👗", label: "The Textile Mill" },
+  { id: "Minerals", icon: "⛏️", label: "The Mine" },
+  { id: "Security", icon: "🛡️", label: "The Police Station" },
+  { id: "Communication", icon: "📮", label: "The Post Office" },
+  { id: "Hospitality", icon: "🏨", label: "The Hotel" },
+  { id: "Baking", icon: "🥖", label: "The Bakery" },
+  { id: "Beauty", icon: "✂️", label: "The Saloon" },
+  { id: "Immigration", icon: "🛂", label: "The Embassy" },
+  { id: "Housing", icon: "🏠", label: "The Real Estate" },
+  { id: "Events", icon: "🎊", label: "The Festival" },
+  { id: "Politics", icon: "🗳️", label: "The Election" }
+];
+
 const getApiBase = (): string => {
   const envVal = import.meta.env.VITE_API_BASE;
   if (envVal) return envVal;
@@ -61,6 +96,7 @@ const Logo = ({ size = 24, className = "" }: { size?: number; className?: string
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<string>("solo");
+  const [activeDomain, setActiveDomain] = useState<string>("General");
   const [isRegistered, setIsRegistered] = useState<boolean>(false);
   const [authTab, setAuthTab] = useState<"login" | "signup">("login");
 
@@ -240,11 +276,14 @@ export default function App() {
 
   // Filter out completed stimuli and shuffle the remaining deck
   useEffect(() => {
-    const filtered = STIMULI.filter(stim => !completedStimuliIds.includes(stim.id));
+    let filtered = STIMULI.filter(stim => !completedStimuliIds.includes(stim.id));
+    if (activeDomain !== "General") {
+      filtered = filtered.filter(stim => stim.category === activeDomain);
+    }
     const shuffled = shuffleDeckArray(filtered);
     setActiveDeck(shuffled);
     setActiveStimulusIndex(0);
-  }, [completedStimuliIds, language, activeDialect]);
+  }, [completedStimuliIds, language, activeDialect, activeDomain]);
 
   // Update Active Dialect when language changes
   useEffect(() => {
@@ -1301,10 +1340,43 @@ export default function App() {
         {/* SCREEN 2: SOLO PLAY MODE */}
         {isRegistered && currentScreen === "solo" && (
           <div className="slide-up" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            {/* Domain Carousel */}
+            <div style={{ margin: "0 -16px 8px -16px", padding: "0 16px" }}>
+              <div className="domain-carousel" style={{ display: "flex", overflowX: "auto", gap: "8px", paddingBottom: "12px", scrollbarWidth: "none", msOverflowStyle: "none" }}>
+                <style>{`.domain-carousel::-webkit-scrollbar { display: none; }`}</style>
+                {DOMAINS.map(domain => (
+                  <div 
+                    key={domain.id} 
+                    onClick={() => setActiveDomain(domain.id)}
+                    style={{ 
+                      display: "flex", 
+                      flexDirection: "column", 
+                      alignItems: "center", 
+                      gap: "4px", 
+                      padding: "8px 16px", 
+                      borderRadius: "12px", 
+                      background: activeDomain === domain.id ? "var(--primary)" : "rgba(30, 41, 59, 0.5)", 
+                      border: `1px solid ${activeDomain === domain.id ? "var(--color-gold)" : "var(--border-subtle)"}`,
+                      cursor: "pointer",
+                      minWidth: "max-content",
+                      transition: "all 0.2s ease"
+                    }}
+                  >
+                    <span style={{ fontSize: "18px" }}>{domain.icon}</span>
+                    <span style={{ fontSize: "11px", fontWeight: "600", color: activeDomain === domain.id ? "#FFF" : "var(--text-secondary)", textAlign: "center", whiteSpace: "nowrap" }}>
+                      {domain.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <div style={{ display: "flex", flexDirection: "column", gap: "6px", borderBottom: "1px solid var(--border-subtle)", paddingBottom: "6px" }}>
               {/* Row 1: Title */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <h2 style={{ fontSize: "20px", color: "var(--primary)", margin: 0 }}>Solo Mode</h2>
+                <h2 style={{ fontSize: "20px", color: "var(--primary)", margin: 0 }}>
+                  {activeDomain === "General" ? "Solo Mode" : `Campaign: ${DOMAINS.find(d => d.id === activeDomain)?.label}`}
+                </h2>
               </div>
             </div>
 
