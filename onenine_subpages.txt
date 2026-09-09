@@ -1,0 +1,318 @@
+
+
+=== https://onenine.dev/missions ===
+HOME
+19X DEMO
+MISSIONS
+DATATHONS
+MAP
+TECHNOLOGY
+PRODUCTS
+BLOG
+ABOUT
+🇬🇧
+EN
+MISSIONS
+
+Complete tasks • Earn rewards
+
+All
+Record
+Review
+Translate
+Annotate
+All Languages
+All Countries
+All Types
+Clear
+Wolof Voice Recording
+VOICE RECORDING
+$1.25
+
+Record your voice speaking Wolof. Clear pronunciation in a quiet environment.
+
+5m
+0/100
+Remote
+Start
+Czech Voice Recording
+VOICE RECORDING
+$1.25
+
+Record your voice speaking Czech. Clear pronunciation in a quiet environment.
+
+5m
+0/100
+Remote
+Start
+Person Detection
+IMAGE ANNOTATION
+$1
+
+Detect and locate people in images
+
+Flex
+Remote
+Start
+Senegal Farmer Annotation
+IMAGE ANNOTATION
+$1.25
+
+Draw bounding boxes around Senegal Farmer in 1 images. Be precise and include all visible instances.
+
+5m
+0/100
+Remote
+Start
+Fulani, Traditional Dress Annotation
+IMAGE ANNOTATION
+$1.25
+
+Draw bounding boxes around Fulani, Traditional Dress, Jewelry in 1 images. Be precise and include all visible instances.
+
+5m
+0/100
+Remote
+Start
+Karamojan People Annotation
+IMAGE ANNOTATION
+$1.25
+
+Draw polygon outlines around Person in 1 images. Be precise and include all visible instances.
+
+5m
+0/100
+Remote
+Start
+Baye Fall Annotation
+IMAGE ANNOTATION
+$1.25
+
+Baye Fall Annotation
+
+5m
+0/100
+Remote
+Start
+Bayefall
+IMAGE ANNOTATION
+$1.25
+
+Bayefall
+
+5m
+0/100
+Remote
+Start
+Review: CLAD BATCH_37. Rokaya mbuup_20251208_0105
+HUMAN REVIEW
+$5
+
+Review and validate the transcription of 3 audio segments in wol_Latn.
+
+Flex
+Remote
+Start
+Review: CLAD BATCH_Pas transcrit_20251208_0105
+HUMAN REVIEW
+$5
+
+Review and validate the transcription of 1 audio segments in wol_Latn.
+
+Flex
+Remote
+Start
+Data labeling test
+DATA LABELING
+$7.50
+
+Read the sentences, and classify each text as: "positive", "negative", and "neutral"
+
+30m
+Remote
+Start
+Wolof TTS
+TEXT TO SPEECH (TTS)
+$5
+
+TTS
+
+20m
+Remote
+Start
+Translating Vietnamese
+VOICE TO TEXT (STT)
+$7.50
+
+Listen to the audios and transcripe all the conversation.
+
+30m
+0/3
+Remote
+Start
+CLAD TEST
+VOICE TO TEXT (STT)
+$7.50
+
+T+VTT
+
+30m
+Remote
+Start
+Wolof Translation
+TRANSLATION
+$1.25
+
+Translate from Wolof to French
+
+5m
+Remote
+Start
+Wolof Voice Recording
+VOICE RECORDING
+$1.25
+
+Read the text and record your voice in wolof
+
+5m
+0/5
+Remote
+Start
+
+Find us on Crunchbase
+
+© 2025 OneNine™ | 19X AB
+
+Est. 2024, Sweden
+
+=== https://onenine.dev/datathons ===
+HOME
+19X DEMO
+MISSIONS
+DATATHONS
+MAP
+TECHNOLOGY
+PRODUCTS
+BLOG
+ABOUT
+🇬🇧
+EN
+
+CONTRIBUTE
+
+DATA COLLECTION
+
+Help build multilingual AI by contributing data in your area of expertise
+
+Agriculture
+
+Farming, crops, livestock
+
+START
+Healthcare
+
+Medical, health, wellness
+
+START
+Education
+
+Learning, teaching, schools
+
+START
+Commerce
+
+Market, trading, retail
+
+START
+Daily Life
+
+Family, food, transport
+
+START
+Technology
+
+Digital, internet, devices
+
+START
+Culture
+
+Music, traditions, arts
+
+START
+Finance
+
+Banking, money, payments
+
+START
+Government
+
+Civic, public services
+
+START
+Legal
+
+Laws, rights, justice
+
+START
+Sports
+
+Athletics, games, fitness
+
+START
+Environment
+
+Climate, nature, wildlife
+
+START
+Media
+
+News, entertainment, film
+
+START
+Religion
+
+Faith, spirituality, rituals
+
+START
+Transport
+
+Travel, vehicles, logistics
+
+START
+
+Find us on Crunchbase
+
+© 2025 OneNine™ | 19X AB
+
+Est. 2024, Sweden
+
+=== https://onenine.dev/19xdemo ===
+HOME
+19X DEMO
+MISSIONS
+DATATHONS
+MAP
+TECHNOLOGY
+PRODUCTS
+BLOG
+ABOUT
+🇬🇧
+EN
+ANNOTATE
+ASR
+REVIEW
+Tasks
+3 left
+Baye Fall - Senegal
+Pending
+Fulani Woman - Niger
+Pending
+Karamoja - Uganda
+Pending
+Progress
+0/3
+IMAGE ANNOTATION
+
+Draw boxes around people, clothing, and accessories in African culture images.
+
+START DEMO

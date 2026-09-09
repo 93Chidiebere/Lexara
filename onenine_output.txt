@@ -1,0 +1,153 @@
+=== PAGE TEXT ===
+HOME
+19X DEMO
+MISSIONS
+DATATHONS
+MAP
+TECHNOLOGY
+PRODUCTS
+BLOG
+ABOUT
+🇬🇧
+EN
+19=@δ
+MULTILINGUAL DATA
+INFRASTRUCTURE FOR AI TRAINING
+
+OneNine delivers production-grade multilingual datasets to global AI labs and enterprises powering LLMs, speech, and vision models in every language beyond English.
+
+REQUEST DATA
+REQUEST EVALUATION
+
+DATA PIPELINE
+
+ONENINE FACTORY
+01
+Source
+
+Native speakers worldwide
+
+02
+Data Collection
+
+Audio, text, image, video
+
+03
+Annotate
+
+ASR, TTS, NMT, Vision
+
+04
+Automate/QA
+
+Auto-check & filter
+
+05
+Validate
+
+Expert review
+
+06
+Deliver
+
+API, Corpus, Cloud
+
+MARKET POSITION
+
+Our strategic positioning in the AI data market
+
+Scale AI
+
+General-purpose data labeling
+
+Appen
+
+Crowd-sourced annotations
+
+Surge AI
+
+Expert-driven data labeling
+
+Mercor
+
+AI talent & data ops
+
+Labelbox
+
+Data labeling platform
+
+Sama
+
+Ethical AI data
+
+ONENINE — ONLY PROVIDER SPECIALIZING IN LOW-RESOURCE MULTILINGUAL DATA AT PRODUCTION QUALITY
+
+$5.4B+ TOTAL ADDRESSABLE MARKET
+
+Market Opportunity
+
+Hover over a segment to explore target customers
+
+AI LEADERS
+$2.8B
+LLM Training Data
+UNIVERSITIES
+$450M
+Research Corpora
+NGOS & RESEARCH
+$320M
+Language Data Grants
+TELCOS & FINTECH
+$1.2B
+ASR & TTS Data
+GOVERNMENTS
+$680M
+NLP & Translation
+
+Hover over a market segment to explore potential customers
+
+SEE IT IN ACTION
+
+Book a live demo with our team and see how OneNine can power your AI models.
+
+BOOK A DEMO
+
+Find us on Crunchbase
+
+© 2025 OneNine™ | 19X AB
+
+Est. 2024, Sweden
+
+=== BUTTONS & LINKS ===
+- HOME (Dest: button)
+- 19X DEMO (Dest: button)
+- MISSIONS (Dest: button)
+- DATATHONS (Dest: button)
+- MAP (Dest: button)
+- TECHNOLOGY (Dest: button)
+- PRODUCTS (Dest: button)
+- BLOG (Dest: button)
+- ABOUT (Dest: button)
+- 🇬🇧
+EN (Dest: button)
+- OneNine (Dest: https://onenine.dev/)
+- Home (Dest: button)
+- 19X Demo (Dest: button)
+- Missions (Dest: button)
+- Datathons (Dest: button)
+- Map (Dest: button)
+- Technology (Dest: button)
+- Products (Dest: button)
+- Blog (Dest: button)
+- About (Dest: button)
+- Sign In (Dest: https://onenine.dev/auth)
+- REQUEST DATA (Dest: button)
+- REQUEST EVALUATION (Dest: button)
+- BOOK A DEMO (Dest: https://calendly.com/19x)
+- Crunchbase (Dest: https://www.crunchbase.com/organization/onenine-caa8)
+- Home (Dest: https://onenine.dev/)
+- Datathons (Dest: https://onenine.dev/datathons)
+- Map (Dest: https://onenine.dev/map)
+- Tasks (Dest: https://onenine.dev/missions)
+- 19X (Dest: https://onenine.dev/19xdemo)
+- Login (Dest: https://onenine.dev/auth)
