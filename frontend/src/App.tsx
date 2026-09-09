@@ -360,7 +360,6 @@ export default function App() {
       const activeStim = activeStimulus;
       if (!activeStim) return;
       
-      // Fetch stimulus image to file conversion (falls back to favicon for text-only scenarios)
       const response = await fetch(activeStim.imageUrl || "/favicon.svg");
       const blob = await response.blob();
       const imageFile = new File([blob], "stimulus.jpg", { type: blob.type });
@@ -383,10 +382,6 @@ export default function App() {
       }
 
       const data = await res.json();
-      setValidationResult(data);
-      
-      // Mark card as completed
-      setCompletedStimuliIds(prev => [...prev, activeStim.id]);
       
       // Update global coins and solo validation counts
       if (isGuest) {
@@ -397,12 +392,20 @@ export default function App() {
         if (newCount >= 2) {
           setTimeout(() => {
             setShowGuestLimitModal(true);
-          }, 1500);
+          }, 500);
         }
       } else {
         setPoints(data.new_points);
         setSoloProgress(data.new_progress);
       }
+
+      // Mark card as completed (this triggers the useEffect that automatically loads the next card)
+      setCompletedStimuliIds(prev => [...prev, activeStim.id]);
+      
+      // EXPLICITLY RESET THE AUDIO UI SO THEY CAN RECORD AGAIN
+      setAudioBlob(null);
+      setAudioUrl(null);
+      setValidationResult(null);
       
     } catch (e: any) {
       setErrorMsg("Failed to connect to backend server. Make sure uvicorn is running on port 8000.");
