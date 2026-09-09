@@ -68,6 +68,7 @@ export default function App() {
   const [isGuest, setIsGuest] = useState<boolean>(true);
   const [guestPlayCount, setGuestPlayCount] = useState<number>(0);
   const [showGuestLimitModal, setShowGuestLimitModal] = useState<boolean>(false);
+  const [showEnterpriseModal, setShowEnterpriseModal] = useState<boolean>(false);
 
   // Deck & Filtering States
   const [completedStimuliIds, setCompletedStimuliIds] = useState<string[]>([]);
@@ -2281,6 +2282,70 @@ export default function App() {
                   Keep Exploring
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ENTERPRISE DATA REQUEST MODAL */}
+      {showEnterpriseModal && (
+        <div className="modal-overlay" style={{
+          position: "absolute",
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(11, 12, 14, 0.8)",
+          display: "flex", justifyContent: "center", alignItems: "center",
+          zIndex: 9999, padding: "20px"
+        }}>
+          <div className="modal-content glass-card slide-up" style={{ 
+            maxWidth: "400px", 
+            width: "100%", 
+            padding: "24px",
+            background: "#FAFAF8",
+            border: "1px solid var(--border-subtle)",
+            boxShadow: "0 10px 25px rgba(0,0,0,0.3)"
+          }}>
+            <h3 style={{ marginTop: 0, color: "var(--color-gold)", display: "flex", alignItems: "center", gap: "8px", fontSize: "18px" }}>
+              <ShieldCheck size={20} /> Request Custom Data
+            </h3>
+            <p style={{ fontSize: "13px", color: "var(--text-secondary)", marginBottom: "20px", lineHeight: "1.5" }}>
+              Sponsor a Domain Campaign (Datathon) to instantly mobilize thousands of native speakers and certified validators to build your proprietary dataset.
+            </p>
+            
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              <div>
+                <label style={{ fontSize: "12px", fontWeight: "600", color: "var(--text-secondary)", display: "block", marginBottom: "4px" }}>Company / Organization</label>
+                <input type="text" className="form-input" placeholder="e.g. Acme AI Ltd" />
+              </div>
+              <div>
+                <label style={{ fontSize: "12px", fontWeight: "600", color: "var(--text-secondary)", display: "block", marginBottom: "4px" }}>Target Language</label>
+                <input type="text" className="form-input" placeholder="e.g. Igbo, Yoruba, Swahili" />
+              </div>
+              <div>
+                <label style={{ fontSize: "12px", fontWeight: "600", color: "var(--text-secondary)", display: "block", marginBottom: "4px" }}>Domain / Sector</label>
+                <select className="form-input">
+                    <option>Healthcare & Medicine</option>
+                    <option>Agriculture & Farming</option>
+                    <option>Finance & Commerce</option>
+                    <option>General Conversational</option>
+                </select>
+              </div>
+              <button 
+                className="btn btn-primary" 
+                style={{ marginTop: "12px", background: "var(--color-gold)", color: "#000" }}
+                onClick={() => {
+                  alert("Request submitted! Our partnerships team will contact you within 24 hours to set up your custom datathon.");
+                  setShowEnterpriseModal(false);
+                }}
+              >
+                Submit Request
+              </button>
+              <button 
+                className="btn-skip" 
+                style={{ padding: "10px", fontWeight: "600" }}
+                onClick={() => setShowEnterpriseModal(false)}
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>
