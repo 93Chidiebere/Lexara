@@ -1431,7 +1431,7 @@ export default function App() {
                           ) : (
                             <>
                               <ShieldCheck size={15} />
-                              <span>Submit to Validation AI</span>
+                              <span>Submit Description</span>
                             </>
                           )}
                         </button>
@@ -1439,39 +1439,7 @@ export default function App() {
                     </div>
                   )}
 
-                  {validationResult && (
-                    <div className="validation-result slide-up" style={{
-                      marginTop: "20px",
-                      padding: "16px",
-                      borderRadius: "8px",
-                      background: validationResult.accept ? "rgba(16, 185, 129, 0.05)" : "rgba(239, 68, 68, 0.05)",
-                      border: `1px solid ${validationResult.accept ? "rgba(16, 185, 129, 0.2)" : "rgba(239, 68, 68, 0.2)"}`
-                    }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                        <span style={{ fontWeight: "700", fontSize: "14px", color: validationResult.accept ? "var(--success)" : "var(--error)" }}>
-                          {validationResult.accept ? "Verification Confirmed (+1 Progress)" : "Requires Revision"}
-                        </span>
-                        <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
-                          AI Match Confidence: {validationResult.confidence}%
-                        </span>
-                      </div>
 
-                      <div style={{ textAlign: "left", fontSize: "13px", display: "flex", flexDirection: "column", gap: "8px" }}>
-                        <p>
-                          <strong>Transcribed Speech:</strong> <span style={{ color: "var(--text-primary)", fontStyle: "italic" }}>"{validationResult.transcription}"</span>
-                        </p>
-                        <p style={{ color: "var(--text-secondary)" }}>
-                          <strong>Assessment Detail:</strong> {validationResult.feedback_message}
-                        </p>
-                        {validationResult.points_earned > 0 && (
-                          <div className="alert alert-success" style={{ display: "flex", gap: "8px", fontSize: "13px", marginTop: "6px" }}>
-                            <Coins size={14} color="var(--primary)" />
-                            <span><strong>Congratulations!</strong> You completed 10 verified solo submissions and earned 1 Coin!</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
                 </div>
               </>
             )}
