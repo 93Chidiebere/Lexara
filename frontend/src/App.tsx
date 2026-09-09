@@ -908,20 +908,44 @@ export default function App() {
   return (
     <div className="app-container">
       {/* Top Application Bar */}
-      <header className="app-header" style={{ padding: "10px 16px" }}>
-        <div className="app-title-group" style={{ cursor: "pointer" }} onClick={() => {
+      <header className="app-header" style={{ padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div className="app-title-group" style={{ cursor: "pointer", display: "flex", alignItems: "center" }} onClick={() => {
           localStorage.removeItem("lexara_user");
           setIsGuest(true);
           setGuestPlayCount(0);
           setIsRegistered(false);
-          setCurrentScreen("onboarding");
+          setCurrentScreen("solo");
           if (wsRef.current) wsRef.current.close();
         }} title="Log Out / Switch Account">
-          <Logo size={18} className="app-logo-icon" />
-          <h1 className="app-logo" style={{ color: "var(--color-gold)", margin: 0, fontSize: "16px" }}>
-            {username === "vincent.chidiebere@outlook.com" ? "eXARA ADMIN" : "eXARA"}
-          </h1>
+          <img src="/logo-meta.jpg" alt="eXARA" style={{ height: "32px", objectFit: "contain", borderRadius: "4px" }} />
+          {username === "vincent.chidiebere@outlook.com" && (
+            <h1 className="app-logo" style={{ color: "var(--color-gold)", margin: "0 0 0 8px", fontSize: "14px" }}>
+              ADMIN
+            </h1>
+          )}
         </div>
+
+        {!isRegistered && currentScreen !== "about" && (
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <span 
+              onClick={() => setCurrentScreen("about")} 
+              style={{ fontSize: "13px", fontWeight: "600", color: "var(--text-secondary)", cursor: "pointer", textDecoration: "underline" }}
+            >
+              About eXARA
+            </span>
+          </div>
+        )}
+
+        {!isRegistered && currentScreen === "about" && (
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <span 
+              onClick={() => setCurrentScreen("solo")} 
+              style={{ fontSize: "13px", fontWeight: "600", color: "var(--color-gold)", cursor: "pointer", textDecoration: "underline" }}
+            >
+              Return to Game
+            </span>
+          </div>
+        )}
 
         {isRegistered && (
           <div style={{ display: "flex", gap: "8px" }}>
@@ -939,8 +963,66 @@ export default function App() {
       {/* Main Container */}
       <main className="app-content">
         
+        {/* SCREEN 0: ABOUT / CORPORATE SITE */}
+        {!isRegistered && currentScreen === "about" && (
+          <div className="slide-up" style={{ padding: "20px 0" }}>
+            <div style={{ textAlign: "center", marginBottom: "32px" }}>
+              <img src="/logo-meta.jpg" alt="eXARA Logo" style={{ width: "120px", borderRadius: "8px", marginBottom: "16px", boxShadow: "0 4px 12px rgba(0,0,0,0.2)" }} />
+              <h2 style={{ fontSize: "24px", color: "var(--color-gold)", marginBottom: "8px" }}>Play. Speak. Preserve.</h2>
+              <p style={{ color: "var(--text-secondary)", fontSize: "14px", lineHeight: "1.6", maxWidth: "400px", margin: "0 auto" }}>
+                eXARA is building the definitive open dataset for 2,000+ African languages and dialects. We turn language preservation into a massive multiplayer game where everyday speakers contribute, validate, and earn rewards.
+              </p>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              <div className="glass-card" style={{ padding: "20px" }}>
+                <h3 style={{ fontSize: "16px", color: "var(--primary)", marginBottom: "8px", display: "flex", alignItems: "center", gap: "8px" }}>
+                  <Globe size={18} /> For Enterprises
+                </h3>
+                <p style={{ fontSize: "13px", color: "var(--text-secondary)", marginBottom: "12px", lineHeight: "1.5" }}>
+                  Need high-quality African voice datasets for AI training? Sponsor a Domain Campaign and instantly mobilize thousands of certified validators.
+                </p>
+                <button 
+                  onClick={() => setShowEnterpriseModal(true)}
+                  className="btn btn-primary"
+                  style={{ width: "100%", background: "var(--color-gold)", color: "#000" }}
+                >
+                  Request Data & Campaigns
+                </button>
+              </div>
+
+              <div className="glass-card" style={{ padding: "20px" }}>
+                <h3 style={{ fontSize: "16px", color: "var(--primary)", marginBottom: "8px", display: "flex", alignItems: "center", gap: "8px" }}>
+                  <BookOpen size={18} /> Our Mission
+                </h3>
+                <p style={{ fontSize: "13px", color: "var(--text-secondary)", lineHeight: "1.5" }}>
+                  Globally, about 7,000 languages are spoken, yet only ~20 receive substantial attention in NLP. eXARA uses Human-in-the-Loop validation architecture to bridge the gap and save languages from extinction.
+                </p>
+              </div>
+
+              <div className="glass-card" style={{ padding: "20px", textAlign: "center" }}>
+                <h3 style={{ fontSize: "16px", color: "var(--text-primary)", marginBottom: "8px" }}>Contact Us</h3>
+                <p style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
+                  Partnerships & Inquiries:<br/>
+                  <a href="mailto:vchidiebere.vc@gmail.com" style={{ color: "var(--color-gold)", textDecoration: "none", fontWeight: "bold" }}>vchidiebere.vc@gmail.com</a>
+                </p>
+              </div>
+            </div>
+
+            <div style={{ textAlign: "center", marginTop: "32px" }}>
+               <button 
+                  onClick={() => setCurrentScreen("solo")}
+                  className="btn-skip"
+                  style={{ padding: "12px 24px", fontSize: "14px", fontWeight: "bold" }}
+               >
+                 Return to Game Login
+               </button>
+            </div>
+          </div>
+        )}
+
         {/* SCREEN 1: ONBOARDING LOGIN/SIGNUP */}
-        {!isRegistered && (
+        {!isRegistered && currentScreen !== "about" && (
           <div className="slide-up" style={{ maxWidth: "420px", margin: "20px auto 0 auto" }}>
             
             <div style={{ textAlign: "center", marginBottom: "20px" }}>
@@ -2260,7 +2342,7 @@ export default function App() {
                   setShowGuestLimitModal(false);
                   setIsRegistered(false);
                   setAuthTab("signup");
-                  setCurrentScreen("onboarding");
+                  setCurrentScreen("solo");
                 }}
               >
                 Create Free Account
@@ -2273,7 +2355,7 @@ export default function App() {
                   setShowGuestLimitModal(false);
                   setIsRegistered(false);
                   setAuthTab("login");
-                  setCurrentScreen("onboarding");
+                  setCurrentScreen("solo");
                 }}
               >
                 Sign In (Existing Account)
