@@ -81,7 +81,7 @@ export default function App() {
   const [activeDeck, setActiveDeck] = useState<any[]>([]);
 
   // User Profile State
-  const [username, setUsername] = useState<string>("guest");
+  const [username, setUsername] = useState<string>("");
   const [loginPassword, setLoginPassword] = useState<string>("");
 
   // Anti-fraud Signup State Variables
@@ -998,7 +998,7 @@ export default function App() {
                         type="text"
                         value={username}
                         onChange={(e) => setUsername(e.target.value.trim())}
-                        placeholder="vincent.chidiebere@outlook.com"
+                        placeholder="Ife"
                         className="form-input"
                         required
                       />
@@ -1056,7 +1056,7 @@ export default function App() {
                         type="email"
                         value={signupEmail}
                         onChange={(e) => setSignupEmail(e.target.value.trim())}
-                        placeholder="vincent.chidiebere@outlook.com"
+                        placeholder="Ife"
                         className="form-input"
                         required
                       />
@@ -1160,7 +1160,7 @@ export default function App() {
 
               {/* Guest / Demo Hook */}
               <div style={{ textAlign: "center", marginTop: "20px" }}>
-                <p style={{ fontSize: "12px", color: "var(--text-secondary)", marginBottom: "8px" }}>Or try a quick demo (Limits apply)</p>
+                <p style={{ fontSize: "12px", color: "var(--text-secondary)", marginBottom: "8px" }}>Or try a quick demo</p>
                 <button 
                   onClick={() => { setErrorMsg(""); initGuestMode(); }} 
                   className="btn-skip"
@@ -1177,7 +1177,7 @@ export default function App() {
                     onClick={() => setShowEnterpriseModal(true)}
                     style={{ background: "none", border: "1px solid var(--color-gold)", color: "var(--color-gold)", padding: "8px 16px", borderRadius: "100px", fontSize: "12px", fontWeight: "600", cursor: "pointer" }}
                   >
-                    Enterprise: Request Data & Campaigns
+                    Request Data & Campaigns
                   </button>
               </div>
             </div>
