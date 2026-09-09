@@ -70,6 +70,8 @@ export default function App() {
   const [showGuestLimitModal, setShowGuestLimitModal] = useState<boolean>(false);
     const [showEnterpriseModal, setShowEnterpriseModal] = useState<boolean>(false);
   const [entCompany, setEntCompany] = useState("");
+  const [entEmail, setEntEmail] = useState("");
+  const [entPhone, setEntPhone] = useState("");
   const [entLanguage, setEntLanguage] = useState("");
   const [entDomain, setEntDomain] = useState("Healthcare & Medicine");
   const [isSubmittingEnt, setIsSubmittingEnt] = useState(false);
@@ -2327,6 +2329,26 @@ export default function App() {
                 />
               </div>
               <div>
+                <label style={{ fontSize: "12px", fontWeight: "600", color: "var(--text-secondary)", display: "block", marginBottom: "4px" }}>Email Address</label>
+                <input 
+                  type="email" 
+                  className="form-input" 
+                  placeholder="e.g. contact@company.com" 
+                  value={entEmail}
+                  onChange={(e) => setEntEmail(e.target.value)}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: "12px", fontWeight: "600", color: "var(--text-secondary)", display: "block", marginBottom: "4px" }}>WhatsApp / Phone</label>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  placeholder="e.g. +234 800 000 0000" 
+                  value={entPhone}
+                  onChange={(e) => setEntPhone(e.target.value)}
+                />
+              </div>
+              <div>
                 <label style={{ fontSize: "12px", fontWeight: "600", color: "var(--text-secondary)", display: "block", marginBottom: "4px" }}>Target Language</label>
                 <input 
                   type="text" 
@@ -2354,8 +2376,8 @@ export default function App() {
                 style={{ marginTop: "12px", background: "var(--color-gold)", color: "#000", opacity: isSubmittingEnt ? 0.7 : 1 }}
                 disabled={isSubmittingEnt}
                 onClick={async () => {
-                  if(!entCompany || !entLanguage) {
-                     alert("Please fill in the Company and Language fields.");
+                  if(!entCompany || !entEmail || !entLanguage) {
+                     alert("Please fill in your Company, Email, and Target Language.");
                      return;
                   }
                   setIsSubmittingEnt(true);
@@ -2368,7 +2390,10 @@ export default function App() {
                       },
                       body: JSON.stringify({
                           _subject: "New Enterprise Data Request - eXARA",
+                          _replyto: entEmail,
                           Company: entCompany,
+                          Email: entEmail,
+                          WhatsApp: entPhone || "Not provided",
                           Target_Language: entLanguage,
                           Domain: entDomain
                       })
@@ -2378,6 +2403,8 @@ export default function App() {
                        alert("Request submitted! Our partnerships team will contact you within 24 hours.");
                        setShowEnterpriseModal(false);
                        setEntCompany("");
+                       setEntEmail("");
+                       setEntPhone("");
                        setEntLanguage("");
                     } else {
                        alert("Something went wrong. Please try again.");
