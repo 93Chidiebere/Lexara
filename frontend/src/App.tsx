@@ -61,7 +61,7 @@ const Logo = ({ size = 24, className = "" }: { size?: number; className?: string
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<string>("solo");
-  const [isRegistered, setIsRegistered] = useState<boolean>(true);
+  const [isRegistered, setIsRegistered] = useState<boolean>(false);
   const [authTab, setAuthTab] = useState<"login" | "signup">("login");
 
   // Guest & Auto-login States
@@ -175,10 +175,10 @@ export default function App() {
         setIsGuest(false);
       } catch (e) {
         localStorage.removeItem("lexara_user");
-        initGuestMode();
+        setIsRegistered(false);
       }
     } else {
-      initGuestMode();
+      setIsRegistered(false);
     }
   }, []);
 
@@ -1150,6 +1150,29 @@ export default function App() {
                   {authTab === "login" ? "Sign In to Play" : "Register Profile"}
                 </button>
               </form>
+
+              {/* Guest / Demo Hook */}
+              <div style={{ textAlign: "center", marginTop: "20px" }}>
+                <p style={{ fontSize: "12px", color: "var(--text-secondary)", marginBottom: "8px" }}>Or try a quick demo (Limits apply)</p>
+                <button 
+                  onClick={() => { setErrorMsg(""); initGuestMode(); }} 
+                  className="btn-skip"
+                  style={{ width: "100%", padding: "10px", fontSize: "13px", fontWeight: "600", display: "flex", justifyContent: "center", alignItems: "center", gap: "8px" }}
+                >
+                  <Mic size={16} /> Play as Guest
+                </button>
+              </div>
+
+              {/* Enterprise B2B Hook */}
+              <div style={{ textAlign: "center", marginTop: "24px", paddingTop: "16px", borderTop: "1px dashed rgba(255, 255, 255, 0.2)" }}>
+                  <p style={{ color: "var(--text-secondary)", fontSize: "12px", marginBottom: "8px" }}>Building an AI model for Africa?</p>
+                  <button 
+                    onClick={() => setShowEnterpriseModal(true)}
+                    style={{ background: "none", border: "1px solid var(--color-gold)", color: "var(--color-gold)", padding: "8px 16px", borderRadius: "100px", fontSize: "12px", fontWeight: "600", cursor: "pointer" }}
+                  >
+                    Enterprise: Request Data & Campaigns
+                  </button>
+              </div>
             </div>
           </div>
         )}
