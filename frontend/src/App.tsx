@@ -68,6 +68,9 @@ export default function App() {
   const [isGuest, setIsGuest] = useState<boolean>(true);
   const [guestPlayCount, setGuestPlayCount] = useState<number>(0);
   const [showGuestLimitModal, setShowGuestLimitModal] = useState<boolean>(false);
+  const [showGuestSetupModal, setShowGuestSetupModal] = useState<boolean>(false);
+  const [guestLang, setGuestLang] = useState<string>("Igbo");
+  const [guestDialect, setGuestDialect] = useState<string>("");
     const [showEnterpriseModal, setShowEnterpriseModal] = useState<boolean>(false);
   const [entCompany, setEntCompany] = useState("");
   const [entEmail, setEntEmail] = useState("");
@@ -189,14 +192,17 @@ export default function App() {
     }
   }, []);
 
-  const initGuestMode = () => {
+  const initGuestMode = (lang?: string, dialect?: string) => {
     setIsRegistered(true);
     setIsGuest(true);
     setUsername("guest");
+    if (lang) setLanguage(lang);
+    if (dialect) setActiveDialect(dialect);
     setPoints(0);
     setSoloProgress(0);
     setGuestPlayCount(0);
     setShowGuestLimitModal(false);
+    setShowGuestSetupModal(false);
   };
 
   const fetchCompletedStimuli = async (usernameParam: string, langParam: string, dialectParam: string) => {
@@ -1162,7 +1168,7 @@ export default function App() {
               <div style={{ textAlign: "center", marginTop: "20px" }}>
                 <p style={{ fontSize: "12px", color: "var(--text-secondary)", marginBottom: "8px" }}>Or try a quick demo</p>
                 <button 
-                  onClick={() => { setErrorMsg(""); initGuestMode(); }} 
+                  onClick={() => { setErrorMsg(""); setShowGuestSetupModal(true); }} 
                   className="btn-skip"
                   style={{ width: "100%", padding: "10px", fontSize: "13px", fontWeight: "600", display: "flex", justifyContent: "center", alignItems: "center", gap: "8px" }}
                 >
@@ -2293,7 +2299,85 @@ export default function App() {
         </div>
       )}
 
-      {/* ENTERPRISE DATA REQUEST MODAL */}
+            {/* GUEST SETUP MODAL */}
+      {showGuestSetupModal && (
+        <div className="modal-overlay" style={{
+          position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(11, 12, 14, 0.8)", display: "flex", justifyContent: "center", alignItems: "center",
+          zIndex: 9999, padding: "20px"
+        }}>
+          <div className="modal-content glass-card slide-up" style={{ 
+            maxWidth: "360px", width: "100%", padding: "24px", background: "#FAFAF8",
+            border: "1px solid var(--border-subtle)", boxShadow: "0 10px 25px rgba(0,0,0,0.3)"
+          }}>
+            <h3 style={{ marginTop: 0, color: "var(--primary)", fontSize: "18px", marginBottom: "8px" }}>
+              Quick Setup
+            </h3>
+            <p style={{ fontSize: "13px", color: "var(--text-secondary)", marginBottom: "20px", lineHeight: "1.4" }}>
+              Choose the language and dialect you want to speak for this demo.
+            </p>
+            
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              <div>
+                <label style={{ fontSize: "12px", fontWeight: "600", color: "var(--text-secondary)", display: "block", marginBottom: "4px" }}>Language</label>
+                <select 
+                  className="form-input"
+                  value={guestLang}
+                  onChange={(e) => {
+                    setGuestLang(e.target.value);
+                    setGuestDialect(""); // Reset dialect on language change
+                  }}
+                >
+                  {Object.keys(LANGUAGES_AND_DIALECTS).map((lang) => (
+                    <option key={lang} value={lang}>{lang}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label style={{ fontSize: "12px", fontWeight: "600", color: "var(--text-secondary)", display: "block", marginBottom: "4px" }}>Dialect (Optional)</label>
+                {guestLang && ((LANGUAGES_AND_DIALECTS as any)[guestLang] || []).length > 0 ? (
+                  <select
+                    value={guestDialect}
+                    onChange={(e) => setGuestDialect(e.target.value)}
+                    className="form-input"
+                  >
+                    <option value="">-- General / Any --</option>
+                    {((LANGUAGES_AND_DIALECTS as any)[guestLang] || []).map((d: string) => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={guestDialect}
+                    onChange={(e) => setGuestDialect(e.target.value)}
+                    placeholder="e.g. Calabar, Wukari"
+                    className="form-input"
+                  />
+                )}
+              </div>
+              
+              <button 
+                className="btn btn-primary" 
+                style={{ marginTop: "12px" }}
+                onClick={() => initGuestMode(guestLang, guestDialect)}
+              >
+                Start Demo
+              </button>
+              <button 
+                className="btn-skip" 
+                style={{ padding: "10px", fontWeight: "600" }}
+                onClick={() => setShowGuestSetupModal(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+{/* ENTERPRISE DATA REQUEST MODAL */}
       {showEnterpriseModal && (
         <div className="modal-overlay" style={{
           position: "absolute",
