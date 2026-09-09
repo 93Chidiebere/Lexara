@@ -1839,7 +1839,7 @@ export default function App() {
                 <div className="glass-card" style={{ padding: "0", overflowX: "auto" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", minWidth: "600px" }}>
                     <thead>
-                      <tr style={{ background: "#16171A", borderBottom: "1px solid var(--border-subtle)" }}>
+                      <tr style={{ background: "#16171A", color: "#FAFAF8", borderBottom: "1px solid var(--border-subtle)" }}>
                         <th style={{ padding: "10px", textAlign: "left" }}>ID</th>
                         <th style={{ padding: "10px", textAlign: "left" }}>Contributor</th>
                         <th style={{ padding: "10px", textAlign: "left" }}>Tribe/Dialect</th>
@@ -1907,7 +1907,7 @@ export default function App() {
               <div className="glass-card" style={{ padding: "0", overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", minWidth: "600px" }}>
                   <thead>
-                    <tr style={{ background: "#16171A", borderBottom: "1px solid var(--border-subtle)" }}>
+                    <tr style={{ background: "#16171A", color: "#FAFAF8", borderBottom: "1px solid var(--border-subtle)" }}>
                       <th style={{ padding: "10px", textAlign: "left" }}>Username</th>
                       <th style={{ padding: "10px", textAlign: "left" }}>Full Name</th>
                       <th style={{ padding: "10px", textAlign: "left" }}>Email</th>
