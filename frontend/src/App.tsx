@@ -68,7 +68,11 @@ export default function App() {
   const [isGuest, setIsGuest] = useState<boolean>(true);
   const [guestPlayCount, setGuestPlayCount] = useState<number>(0);
   const [showGuestLimitModal, setShowGuestLimitModal] = useState<boolean>(false);
-  const [showEnterpriseModal, setShowEnterpriseModal] = useState<boolean>(false);
+    const [showEnterpriseModal, setShowEnterpriseModal] = useState<boolean>(false);
+  const [entCompany, setEntCompany] = useState("");
+  const [entLanguage, setEntLanguage] = useState("");
+  const [entDomain, setEntDomain] = useState("Healthcare & Medicine");
+  const [isSubmittingEnt, setIsSubmittingEnt] = useState(false);
 
   // Deck & Filtering States
   const [completedStimuliIds, setCompletedStimuliIds] = useState<string[]>([]);
@@ -2308,21 +2312,37 @@ export default function App() {
               <ShieldCheck size={20} /> Request Custom Data
             </h3>
             <p style={{ fontSize: "13px", color: "var(--text-secondary)", marginBottom: "20px", lineHeight: "1.5" }}>
-              Sponsor a Domain Campaign (Datathon) to instantly mobilize thousands of native speakers and certified validators to build your proprietary dataset.
+              Sponsor a Domain Campaign to instantly mobilize thousands of native speakers and certified validators to build your proprietary dataset.
             </p>
             
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               <div>
                 <label style={{ fontSize: "12px", fontWeight: "600", color: "var(--text-secondary)", display: "block", marginBottom: "4px" }}>Company / Organization</label>
-                <input type="text" className="form-input" placeholder="e.g. Acme AI Ltd" />
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  placeholder="e.g. Acme AI Ltd" 
+                  value={entCompany}
+                  onChange={(e) => setEntCompany(e.target.value)}
+                />
               </div>
               <div>
                 <label style={{ fontSize: "12px", fontWeight: "600", color: "var(--text-secondary)", display: "block", marginBottom: "4px" }}>Target Language</label>
-                <input type="text" className="form-input" placeholder="e.g. Igbo, Yoruba, Swahili" />
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  placeholder="e.g. Igbo, Yoruba, Swahili" 
+                  value={entLanguage}
+                  onChange={(e) => setEntLanguage(e.target.value)}
+                />
               </div>
               <div>
                 <label style={{ fontSize: "12px", fontWeight: "600", color: "var(--text-secondary)", display: "block", marginBottom: "4px" }}>Domain / Sector</label>
-                <select className="form-input">
+                <select 
+                  className="form-input"
+                  value={entDomain}
+                  onChange={(e) => setEntDomain(e.target.value)}
+                >
                     <option>Healthcare & Medicine</option>
                     <option>Agriculture & Farming</option>
                     <option>Finance & Commerce</option>
@@ -2331,18 +2351,51 @@ export default function App() {
               </div>
               <button 
                 className="btn btn-primary" 
-                style={{ marginTop: "12px", background: "var(--color-gold)", color: "#000" }}
-                onClick={() => {
-                  alert("Request submitted! Our partnerships team will contact you within 24 hours to set up your custom datathon.");
-                  setShowEnterpriseModal(false);
+                style={{ marginTop: "12px", background: "var(--color-gold)", color: "#000", opacity: isSubmittingEnt ? 0.7 : 1 }}
+                disabled={isSubmittingEnt}
+                onClick={async () => {
+                  if(!entCompany || !entLanguage) {
+                     alert("Please fill in the Company and Language fields.");
+                     return;
+                  }
+                  setIsSubmittingEnt(true);
+                  try {
+                    const response = await fetch("https://formsubmit.co/ajax/vchidiebere.vc@gmail.com", {
+                      method: "POST",
+                      headers: {
+                          "Content-Type": "application/json",
+                          "Accept": "application/json"
+                      },
+                      body: JSON.stringify({
+                          _subject: "New Enterprise Data Request - eXARA",
+                          Company: entCompany,
+                          Target_Language: entLanguage,
+                          Domain: entDomain
+                      })
+                    });
+                    
+                    if(response.ok) {
+                       alert("Request submitted! Our partnerships team will contact you within 24 hours.");
+                       setShowEnterpriseModal(false);
+                       setEntCompany("");
+                       setEntLanguage("");
+                    } else {
+                       alert("Something went wrong. Please try again.");
+                    }
+                  } catch(e) {
+                     alert("Network error. Please try again.");
+                  } finally {
+                    setIsSubmittingEnt(false);
+                  }
                 }}
               >
-                Submit Request
+                {isSubmittingEnt ? "Submitting..." : "Submit Request"}
               </button>
               <button 
                 className="btn-skip" 
                 style={{ padding: "10px", fontWeight: "600" }}
                 onClick={() => setShowEnterpriseModal(false)}
+                disabled={isSubmittingEnt}
               >
                 Cancel
               </button>
