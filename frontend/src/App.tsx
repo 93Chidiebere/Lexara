@@ -2186,8 +2186,6 @@ export default function App() {
             )}
             
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <h3 style={{ fontSize: "16px", margin: 0 }}>Active Bounties</h3>
                     <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>Filtered: {language}</span>
@@ -2289,7 +2287,6 @@ export default function App() {
                     </div>
                 </div>
               </div>
-            )}
           </div>
         )}
 
