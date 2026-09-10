@@ -1340,36 +1340,7 @@ export default function App() {
         {/* SCREEN 2: SOLO PLAY MODE */}
         {isRegistered && currentScreen === "solo" && (
           <div className="slide-up" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            {/* Domain Carousel */}
-            <div style={{ margin: "0 -16px 8px -16px", padding: "0 16px" }}>
-              <div className="domain-carousel" style={{ display: "flex", overflowX: "auto", gap: "8px", paddingBottom: "12px", scrollbarWidth: "none", msOverflowStyle: "none" }}>
-                <style>{`.domain-carousel::-webkit-scrollbar { display: none; }`}</style>
-                {DOMAINS.map(domain => (
-                  <div 
-                    key={domain.id} 
-                    onClick={() => setActiveDomain(domain.id)}
-                    style={{ 
-                      display: "flex", 
-                      flexDirection: "column", 
-                      alignItems: "center", 
-                      gap: "4px", 
-                      padding: "8px 16px", 
-                      borderRadius: "12px", 
-                      background: activeDomain === domain.id ? "var(--primary)" : "rgba(30, 41, 59, 0.5)", 
-                      border: `1px solid ${activeDomain === domain.id ? "var(--color-gold)" : "var(--border-subtle)"}`,
-                      cursor: "pointer",
-                      minWidth: "max-content",
-                      transition: "all 0.2s ease"
-                    }}
-                  >
-                    <span style={{ fontSize: "18px" }}>{domain.icon}</span>
-                    <span style={{ fontSize: "11px", fontWeight: "600", color: activeDomain === domain.id ? "#FFF" : "var(--text-secondary)", textAlign: "center", whiteSpace: "nowrap" }}>
-                      {domain.label}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
+
 
             <div style={{ display: "flex", flexDirection: "column", gap: "6px", borderBottom: "1px solid var(--border-subtle)", paddingBottom: "6px" }}>
               {/* Row 1: Title */}
@@ -1377,6 +1348,14 @@ export default function App() {
                 <h2 style={{ fontSize: "20px", color: "var(--primary)", margin: 0 }}>
                   {activeDomain === "General" ? "Solo Mode" : `Campaign: ${DOMAINS.find(d => d.id === activeDomain)?.label}`}
                 </h2>
+                {activeDomain !== "General" && (
+                  <button 
+                    onClick={() => setActiveDomain("General")} 
+                    style={{ fontSize: "12px", padding: "4px 8px", background: "transparent", border: "1px solid var(--border-subtle)", borderRadius: "4px", color: "var(--text-secondary)", cursor: "pointer" }}
+                  >
+                    Exit Campaign
+                  </button>
+                )}
               </div>
             </div>
 
@@ -2197,21 +2176,74 @@ export default function App() {
               <ShieldCheck size={20} /> Validation Studio
             </h2>
             
-            {xp < 500 ? (
-              <div className="glass-card" style={{ padding: "30px 20px", textAlign: "center", marginTop: "20px" }}>
-                <ShieldCheck size={48} color="#555" style={{ margin: "0 auto 16px auto" }} />
-                <h3 style={{ fontSize: "18px", marginBottom: "8px" }}>Studio is Locked</h3>
-                <p style={{ fontSize: "14px", color: "var(--text-secondary)", lineHeight: "1.5" }}>
-                  You must earn 500 XP by contributing in Solo mode before you can become a Data Validator. Validators earn real Coins!
+            {xp < 500 && (
+              <div className="glass-card" style={{ padding: "16px", textAlign: "center", marginBottom: "16px", border: "1px solid rgba(239, 68, 68, 0.2)" }}>
+                <h3 style={{ fontSize: "14px", marginBottom: "4px", color: "var(--color-gold)" }}>Validation Locked ({xp} / 500 XP)</h3>
+                <p style={{ fontSize: "12px", color: "var(--text-secondary)", margin: 0 }}>
+                  You need 500 XP to review other people's audio for Coins. However, you can still accept Sponsored Datathons below!
                 </p>
-                <div style={{ marginTop: "20px", color: "var(--color-gold)", fontWeight: "bold" }}>Current XP: {xp} / 500</div>
               </div>
-            ) : (
+            )}
+            
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+
               <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <h3 style={{ fontSize: "16px", margin: 0 }}>Active Bounties</h3>
                     <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>Filtered: {language}</span>
                 </div>
+                {/* Datathon Gig 1 */}
+                <div className="glass-card" style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "12px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                        <div>
+                            <h4 style={{ margin: "0 0 4px 0", color: "#fff", fontSize: "15px" }}>⚕️ The Clinic Campaign</h4>
+                            <span style={{ fontSize: "12px", color: "var(--color-gold)", fontWeight: "bold" }}>Sponsored by Enterprise</span>
+                        </div>
+                        <div style={{ background: "var(--primary)", color: "#fff", padding: "4px 8px", borderRadius: "4px", fontSize: "11px", fontWeight: "bold" }}>
+                            Datathon
+                        </div>
+                    </div>
+                    <p style={{ fontSize: "13px", color: "var(--text-secondary)", margin: 0 }}>
+                        Contribute high-quality medical and healthcare terminology in {language}. Help build the ultimate medical dataset.
+                    </p>
+                    <button 
+                      className="btn btn-primary" 
+                      style={{ width: "100%", padding: "10px", background: "var(--color-gold)", color: "#000" }} 
+                      onClick={() => {
+                        setActiveDomain("Healthcare");
+                        setCurrentScreen("solo");
+                      }}
+                    >
+                        Accept Gig & Start Recording
+                    </button>
+                </div>
+
+                {/* Datathon Gig 2 */}
+                <div className="glass-card" style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "12px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                        <div>
+                            <h4 style={{ margin: "0 0 4px 0", color: "#fff", fontSize: "15px" }}>🌾 The Harvest Campaign</h4>
+                            <span style={{ fontSize: "12px", color: "var(--color-gold)", fontWeight: "bold" }}>Sponsored by AgriTech</span>
+                        </div>
+                        <div style={{ background: "var(--primary)", color: "#fff", padding: "4px 8px", borderRadius: "4px", fontSize: "11px", fontWeight: "bold" }}>
+                            Datathon
+                        </div>
+                    </div>
+                    <p style={{ fontSize: "13px", color: "var(--text-secondary)", margin: 0 }}>
+                        We are collecting {language} agricultural terminology. Help build Voice AI for rural farmers.
+                    </p>
+                    <button 
+                      className="btn btn-primary" 
+                      style={{ width: "100%", padding: "10px", background: "var(--color-gold)", color: "#000" }} 
+                      onClick={() => {
+                        setActiveDomain("Agriculture");
+                        setCurrentScreen("solo");
+                      }}
+                    >
+                        Accept Gig & Start Recording
+                    </button>
+                </div>
+
                 
                 {/* Bounty Card 1 */}
                 <div className="glass-card" style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "12px" }}>
