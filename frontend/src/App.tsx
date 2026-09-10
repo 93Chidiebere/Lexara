@@ -95,7 +95,7 @@ const Logo = ({ size = 24, className = "" }: { size?: number; className?: string
 );
 
 export default function App() {
-  const [currentScreen, setCurrentScreen] = useState<string>("solo");
+  const [currentScreen, setCurrentScreen] = useState<string>("onboarding");
   const [activeDomain, setActiveDomain] = useState<string>("General");
   const [isRegistered, setIsRegistered] = useState<boolean>(false);
   const [authTab, setAuthTab] = useState<"login" | "signup">("login");
@@ -964,7 +964,7 @@ export default function App() {
           )}
         </div>
 
-        {!isRegistered && currentScreen !== "about" && (
+        {currentScreen === "onboarding" && (
           <div style={{ display: "flex", alignItems: "center" }}>
             <span 
               onClick={() => setCurrentScreen("about")} 
@@ -975,7 +975,7 @@ export default function App() {
           </div>
         )}
 
-        {!isRegistered && currentScreen === "about" && (
+        {currentScreen === "about" && (
           <div style={{ display: "flex", alignItems: "center" }}>
             <span 
               onClick={() => setCurrentScreen("solo")} 
@@ -1003,7 +1003,7 @@ export default function App() {
       <main className="app-content">
         
         {/* SCREEN 0: ABOUT / CORPORATE SITE */}
-        {!isRegistered && currentScreen === "about" && (
+        {currentScreen === "about" && (
           <div className="slide-up" style={{ padding: "20px 0" }}>
             <div style={{ textAlign: "center", marginBottom: "32px" }}>
               <img src="/logo-meta.jpg" alt="eXARA Logo" style={{ width: "120px", borderRadius: "8px", marginBottom: "16px", boxShadow: "0 4px 12px rgba(0,0,0,0.2)" }} />
@@ -1050,18 +1050,18 @@ export default function App() {
 
             <div style={{ textAlign: "center", marginTop: "32px" }}>
                <button 
-                  onClick={() => setCurrentScreen("solo")}
+                  onClick={() => setCurrentScreen("onboarding")}
                   className="btn-skip"
                   style={{ padding: "12px 24px", fontSize: "14px", fontWeight: "bold" }}
                >
-                 Return to Game Login
+                 Return to Landing
                </button>
             </div>
           </div>
         )}
 
         {/* SCREEN 1: ONBOARDING LOGIN/SIGNUP */}
-        {!isRegistered && currentScreen !== "about" && (
+        {currentScreen === "onboarding" && (
           <div className="slide-up" style={{ maxWidth: "420px", margin: "20px auto 0 auto" }}>
             
             <div style={{ textAlign: "center", marginBottom: "20px" }}>
@@ -1071,6 +1071,26 @@ export default function App() {
               </p>
             </div>
 
+            {isRegistered ? (
+               <div className="glass-card" style={{ padding: "32px 24px", textAlign: "center", marginBottom: "24px" }}>
+                 <div style={{ width: "60px", height: "60px", borderRadius: "30px", background: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px auto", color: "#fff", fontSize: "24px", fontWeight: "bold" }}>
+                   {username ? username.charAt(0).toUpperCase() : "U"}
+                 </div>
+                 <h3 style={{ fontSize: "18px", color: "var(--color-gold)", marginBottom: "8px" }}>Welcome back, {username.split('@')[0]}!</h3>
+                 <p style={{ fontSize: "14px", color: "var(--text-secondary)", marginBottom: "24px" }}>You are signed in and ready to continue playing and validating.</p>
+                 <button onClick={() => setCurrentScreen("solo")} className="btn btn-primary" style={{ width: "100%", padding: "14px", background: "var(--color-gold)", color: "#000", fontWeight: "bold", fontSize: "15px" }}>
+                   Enter Game
+                 </button>
+                 <button onClick={() => {
+                    localStorage.removeItem("lexara_user");
+                    setIsRegistered(false);
+                    setIsGuest(true);
+                 }} className="btn btn-ghost" style={{ width: "100%", marginTop: "16px", color: "var(--text-secondary)", fontSize: "13px" }}>
+                   Log Out / Switch Account
+                 </button>
+               </div>
+            ) : (
+              <React.Fragment>
             {/* Tabs Selector with Gold underline highlights */}
             <div style={{ display: "flex", borderBottom: "1px solid var(--border-subtle)", marginBottom: "16px" }}>
               <button 
@@ -1323,8 +1343,13 @@ export default function App() {
                 </button>
               </div>
 
+
+            </div> {/* close form glass-card */}
+              </React.Fragment>
+            )}
+
               {/* Enterprise B2B Hook */}
-              <div style={{ textAlign: "center", marginTop: "24px", paddingTop: "16px", borderTop: "1px dashed rgba(255, 255, 255, 0.2)" }}>
+              <div className="glass-card" style={{ padding: "16px", textAlign: "center", marginTop: "16px" }}>
                   <p style={{ color: "var(--text-secondary)", fontSize: "12px", marginBottom: "8px" }}>Building an AI model for Africa?</p>
                   <button 
                     onClick={() => setShowEnterpriseModal(true)}
@@ -1333,7 +1358,7 @@ export default function App() {
                     Request Data & Campaigns
                   </button>
               </div>
-            </div>
+
           </div>
         )}
 
