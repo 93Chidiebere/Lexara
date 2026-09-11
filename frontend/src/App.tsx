@@ -1278,7 +1278,7 @@ export default function App() {
                         <option value="Hausa">Hausa</option>
                         <option value="Yoruba">Yoruba</option>
                         <option value="Twi">Twi</option>
-                        <option value="Others (Efik, Ibibio, Jukun)">Others (Efik, Ibibio, Jukun)</option>
+                        <option value="Others (input your language)">Others (input your language)</option>
                       </select>
                     </div>
 
@@ -1291,7 +1291,7 @@ export default function App() {
                           type="text"
                           value={signupCustomLang}
                           onChange={(e) => setSignupCustomLang(e.target.value)}
-                          placeholder="e.g. Efik, Ibibio, Tiv"
+                          placeholder="e.g. Urhobo, Ijaw, Tiv"
                           className="form-input"
                           required
                         />
@@ -1318,7 +1318,7 @@ export default function App() {
                           type="text"
                           value={signupDialect}
                           onChange={(e) => setSignupDialect(e.target.value)}
-                          placeholder="e.g. Calabar, Wukari"
+                          placeholder="(input your dialect)"
                           className="form-input"
                         />
                       )}
@@ -2543,7 +2543,7 @@ export default function App() {
                     type="text"
                     value={guestCustomLang}
                     onChange={(e) => setGuestCustomLang(e.target.value)}
-                    placeholder="e.g. Efik, Ibibio, Tiv"
+                    placeholder="e.g. Urhobo, Ijaw, Tiv"
                     className="form-input"
                   />
                 </div>
@@ -2567,7 +2567,7 @@ export default function App() {
                     type="text"
                     value={guestDialect}
                     onChange={(e) => setGuestDialect(e.target.value)}
-                    placeholder="e.g. Calabar, Wukari"
+                    placeholder="(input your dialect)"
                     className="form-input"
                   />
                 )}

@@ -574,11 +574,5 @@ export const LANGUAGES_AND_DIALECTS = {
     "Fante",
     "Bono"
   ],
-  "Others (Efik, Ibibio, Jukun)": [
-    "Efik (Calabar)",
-    "Ibibio (Uyo)",
-    "Jukun (Wukari)",
-    "Jukun (Takum)",
-    "Others"
-  ]
+  "Others (input your language)": []
 };
