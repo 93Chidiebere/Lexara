@@ -17,7 +17,8 @@ import {
   Settings,
   Plus,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  LogOut
 } from "lucide-react";
 import { STIMULI, LANGUAGES_AND_DIALECTS } from "./data/stimuli";
 import type { Stimulus } from "./data/stimuli";
@@ -2191,6 +2192,20 @@ export default function App() {
                 </div>
               </div>
             </div>
+
+            <button 
+              className="btn-skip"
+              style={{ width: "100%", padding: "14px", marginTop: "8px", border: "1px solid rgba(239, 68, 68, 0.4)", color: "var(--danger)", fontWeight: "bold", display: "flex", justifyContent: "center", alignItems: "center", gap: "8px", background: "rgba(239, 68, 68, 0.05)" }}
+              onClick={() => {
+                localStorage.removeItem("lexara_user");
+                setIsRegistered(false);
+                setIsGuest(true);
+                setCurrentScreen("onboarding");
+                setUsername("");
+              }}
+            >
+              <LogOut size={16} /> Log Out Account
+            </button>
           </div>
         )}
 
